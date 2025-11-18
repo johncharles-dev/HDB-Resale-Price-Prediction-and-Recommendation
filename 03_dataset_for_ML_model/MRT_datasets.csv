@@ -1,4 +1,4 @@
-Station_Name,Station_Type,Latitude,Longitude
+station_name,station_type,latitude,longitude
 ADMIRALTY MRT STATION,MRT,1.44062,103.80099
 ALJUNIED MRT STATION,MRT,1.31643,103.88291
 ANG MO KIO MRT STATION,MRT,1.37,103.84961

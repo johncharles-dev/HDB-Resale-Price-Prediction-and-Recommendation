@@ -8,12 +8,14 @@ primary_schools = pd.read_csv('03_dataset_for_ML_model/Primary_school_dataset.cs
 mrt_stations = pd.read_csv('03_dataset_for_ML_model/MRT_datasets.csv')
 hawker_centers = pd.read_csv('03_dataset_for_ML_model/Hawker_Centers_datasets.csv')
 malls = pd.read_csv('03_dataset_for_ML_model/Malls_datasets.csv')
+cbd_df = pd.read_csv('03_dataset_for_ML_model/singapore_business_district.csv')
 
 print(f"HDB records: {len(hdb_df)}")
 print(f"Primary schools: {len(primary_schools)}")
 print(f"MRT stations: {len(mrt_stations)}")
 print(f"Hawker centers: {len(hawker_centers)}")
 print(f"Malls: {len(malls)}")
+print(f"CBD points: {len(cbd_df)}")
 
 # Function to calculate closest distance using BallTree (efficient for large datasets)
 def get_closest_distance(hdb_coords, amenity_coords):
@@ -63,14 +65,22 @@ mall_coords = malls[['latitude', 'longitude']].values
 hdb_df['distance_to_nearest_mall_km'] = get_closest_distance(hdb_coords, mall_coords)
 print("✓ Malls done")
 
+# 5. Distance to CBD (Raffles Place)
+cbd_coords = cbd_df[['latitude', 'longitude']].values
+hdb_df['distance_to_cbd_km'] = get_closest_distance(hdb_coords, cbd_coords)
+print("✓ CBD (Raffles Place) done")
+
 # Display summary statistics
 print("\n" + "="*60)
 print("DISTANCE SUMMARY (in kilometers)")
 print("="*60)
-print(hdb_df[['distance_to_nearest_primary_school_km', 
-               'distance_to_nearest_mrt_km',
-               'distance_to_nearest_hawker_km', 
-               'distance_to_nearest_mall_km']].describe())
+print(hdb_df[[
+    'distance_to_nearest_primary_school_km', 
+    'distance_to_nearest_mrt_km',
+    'distance_to_nearest_hawker_km', 
+    'distance_to_nearest_mall_km',
+    'distance_to_cbd_km'
+]].describe())
 
 # Save the enhanced dataset
 output_file = '03_dataset_for_ML_model/HDB_with_distances.csv'
@@ -79,8 +89,10 @@ print(f"\n✓ Enhanced dataset saved to: {output_file}")
 
 # Show sample of results
 print("\nSample of first 5 rows with new distance features:")
-print(hdb_df[['town', 'street_name', 'resale_price',
-              'distance_to_nearest_mrt_km', 
-              'distance_to_nearest_hawker_km',
-              'distance_to_nearest_mall_km',
-              'distance_to_nearest_primary_school_km']].head())
+print(hdb_df[[
+    'distance_to_nearest_mrt_km', 
+    'distance_to_nearest_hawker_km',
+    'distance_to_nearest_mall_km',
+    'distance_to_nearest_primary_school_km',
+    'distance_to_cbd_km'
+]].head())

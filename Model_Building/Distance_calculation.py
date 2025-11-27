@@ -9,7 +9,7 @@ mrt_stations = pd.read_csv('03_dataset_for_ML_model/MRT_datasets.csv')
 hawker_centers = pd.read_csv('03_dataset_for_ML_model/Hawker_Centers_datasets.csv')
 malls = pd.read_csv('03_dataset_for_ML_model/Malls_datasets.csv')
 cbd_df = pd.read_csv('03_dataset_for_ML_model/singapore_business_district.csv')
-high_value_schools = pd.read_csv('03_dataset_for_ML_model/High_value_schools.csv')
+high_value_schools = pd.read_csv('03_dataset_for_ML_model/Ballot_school.csv')
 
 print(f"High value primary schools: {len(high_value_schools)}")
 print(f"HDB records: {len(hdb_df)}")

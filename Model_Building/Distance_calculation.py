@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.neighbors import BallTree
 
 # Load all datasets
-hdb_df = pd.read_csv('03_dataset_for_ML_model/Complete_HDB_resale_dataset_2017_to_2025.csv')
+hdb_df = pd.read_csv('03_dataset_for_ML_model/Complete_HDB_resale_dataset_2015_to_2025.csv')
 primary_schools = pd.read_csv('03_dataset_for_ML_model/Primary_school_dataset.csv')
 mrt_stations = pd.read_csv('03_dataset_for_ML_model/MRT_datasets.csv')
 hawker_centers = pd.read_csv('03_dataset_for_ML_model/Hawker_Centers_datasets.csv')

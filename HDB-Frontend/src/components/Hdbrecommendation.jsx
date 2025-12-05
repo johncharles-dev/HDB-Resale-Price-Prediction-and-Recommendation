@@ -1,5 +1,114 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+// Theme helper - generates class names based on isDark prop
+const getTheme = (isDark) => ({
+  bg: isDark ? 'bg-black' : 'bg-gray-50',
+  bgCard: isDark ? 'bg-neutral-900' : 'bg-white',
+  bgInput: isDark ? 'bg-neutral-900' : 'bg-white',
+  bgSection: isDark ? 'bg-neutral-900/50' : 'bg-gray-50',
+  bgTrack: isDark ? 'bg-neutral-800' : 'bg-gray-100',
+  bgFill: isDark ? 'bg-white' : 'bg-gray-900',
+  bgHandle: isDark ? 'bg-white' : 'bg-gray-900',
+  bgHover: isDark ? 'bg-neutral-800' : 'bg-gray-100',
+  bgTooltip: isDark ? 'bg-neutral-800' : 'bg-gray-100',
+  bgEmpty: isDark ? 'bg-neutral-900' : 'bg-gray-100',
+  bgSelected: isDark ? 'bg-white' : 'bg-gray-900',
+  text: isDark ? 'text-white' : 'text-gray-900',
+  textSecondary: isDark ? 'text-neutral-400' : 'text-gray-600',
+  textMuted: isDark ? 'text-neutral-500' : 'text-gray-500',
+  textLabel: isDark ? 'text-neutral-500' : 'text-gray-700',
+  textSelected: isDark ? 'text-black' : 'text-white',
+  border: isDark ? 'border-neutral-800' : 'border-gray-200',
+  borderInput: isDark ? 'border-neutral-800' : 'border-gray-300',
+  borderHover: isDark ? 'border-neutral-700' : 'border-gray-400',
+  borderFocus: isDark ? 'border-neutral-600' : 'border-gray-400',
+  borderDashed: isDark ? 'border-neutral-800' : 'border-gray-300',
+  btnPrimary: isDark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-gray-900 text-white hover:bg-gray-800',
+  btnChip: isDark 
+    ? 'bg-neutral-900 text-neutral-400 border-neutral-800 hover:border-neutral-700 hover:text-white' 
+    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400 hover:text-gray-900',
+  btnChipSelected: isDark ? 'bg-white text-black shadow-lg' : 'bg-gray-900 text-white shadow-lg',
+  tagBg: isDark ? 'bg-neutral-800' : 'bg-gray-100',
+  tagText: isDark ? 'text-neutral-300' : 'text-gray-700',
+  matchGood: isDark ? 'text-emerald-400' : 'text-emerald-600',
+});
+
+// ============== ICONS ==============
+const Icons = {
+  calendar: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+    </svg>
+  ),
+  home: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+    </svg>
+  ),
+  mapPin: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+    </svg>
+  ),
+  map: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+    </svg>
+  ),
+  briefcase: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" />
+    </svg>
+  ),
+  academic: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
+    </svg>
+  ),
+  users: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+    </svg>
+  ),
+  search: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+    </svg>
+  ),
+  train: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+    </svg>
+  ),
+  school: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+    </svg>
+  ),
+  cart: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+    </svg>
+  ),
+  utensils: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.125-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265zm-3 0a.375.375 0 11-.53 0L9 2.845l.265.265zm6 0a.375.375 0 11-.53 0L15 2.845l.265.265z" />
+    </svg>
+  ),
+  pin: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+    </svg>
+  ),
+  trash: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+    </svg>
+  )
+};
+
 // ============== DATA CONFIG ==============
 const HDB_TOWNS = [
   "ANG MO KIO", "BEDOK", "BISHAN", "BUKIT BATOK", "BUKIT MERAH",
@@ -54,6 +163,18 @@ const GYM_SAMPLE = [
   "Celebrity Fitness", "True Fitness", "Gymmboxx", "The Gym Pod"
 ];
 
+const FREQUENCY_OPTIONS = [
+  "Daily (5x per week)",
+  "3-4x per week",
+  "1-2x per week",
+  "Weekly (1x per week)",
+  "2-3x per month",
+  "Monthly (1x per month)",
+  "Rarely"
+];
+
+const PERSON_OPTIONS = ["You", "Spouse", "Partner", "Family Member"];
+
 const PREDICTION_YEARS = [2025, 2026, 2027, 2028];
 
 // ============== MOCK RECOMMENDATION ==============
@@ -89,9 +210,22 @@ const generateRecommendations = (criteria) => {
 // ============== COMPONENTS ==============
 
 // Multi-select Chips
-const ChipSelect = ({ label, options, selected, onChange, maxShow = 8 }) => {
+const ChipSelect = ({ label, options, selected, onChange, maxShow = 8, isDark = false }) => {
   const [showAll, setShowAll] = useState(false);
-  const displayOptions = showAll ? options : options.slice(0, maxShow);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef(null);
+  const t = getTheme(isDark);
+  
+  // Filter options based on search
+  const filteredOptions = searchQuery 
+    ? options.filter(opt => opt.toLowerCase().includes(searchQuery.toLowerCase()))
+    : options;
+  
+  // Display options (respect maxShow only when not searching)
+  const displayOptions = searchQuery 
+    ? filteredOptions 
+    : (showAll ? options : options.slice(0, maxShow));
   
   const toggle = (opt) => {
     if (selected.includes(opt)) {
@@ -101,33 +235,94 @@ const ChipSelect = ({ label, options, selected, onChange, maxShow = 8 }) => {
     }
   };
   
+  // Highlight matching text
+  const highlightMatch = (text) => {
+    if (!searchQuery) return text;
+    const regex = new RegExp(`(${searchQuery})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} className="bg-yellow-200 text-gray-900 rounded">{part}</mark> : part
+    );
+  };
+  
   return (
     <div className="space-y-3">
-      <label className="block text-xs uppercase tracking-widest text-neutral-500">{label}</label>
-      <div className="flex flex-wrap gap-2">
-        {displayOptions.map(opt => (
+      <div className="flex items-center justify-between">
+        <label className={`block text-xs uppercase tracking-widest ${t.textLabel}`}>{label}</label>
+        {options.length > 8 && (
           <button
-            key={opt}
-            onClick={() => toggle(opt)}
-            className={`px-3 py-1.5 rounded-lg text-sm transition-all duration-200 ease-out transform active:scale-95 ${
-              selected.includes(opt)
-                ? 'bg-white text-black shadow-lg shadow-white/10'
-                : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:border-neutral-600 hover:text-neutral-300'
-            }`}
+            onClick={() => {
+              setIsSearching(!isSearching);
+              setSearchQuery('');
+              if (!isSearching) {
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+              }
+            }}
+            className={`text-xs ${t.textMuted} hover:${t.text} flex items-center gap-1 transition-colors`}
           >
-            {opt}
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {isSearching ? 'Close' : 'Search'}
           </button>
-        ))}
-        {options.length > maxShow && (
+        )}
+      </div>
+      
+      {/* Search input */}
+      {isSearching && (
+        <div className="relative">
+          <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${t.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={`Search ${label.toLowerCase()}...`}
+            className={`w-full pl-9 pr-3 py-2 text-sm ${t.bgInput} border ${t.borderInput} ${t.text} rounded-lg focus:outline-none focus:${t.borderFocus}`}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 ${t.textMuted} hover:${t.text}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+      
+      <div className="flex flex-wrap gap-2">
+        {displayOptions.length === 0 ? (
+          <span className={`text-sm ${t.textMuted}`}>No results found</span>
+        ) : (
+          displayOptions.map(opt => (
+            <button
+              key={opt}
+              onClick={() => toggle(opt)}
+              className={`px-3 py-1.5 rounded-lg text-sm transition-all duration-200 ease-out transform active:scale-95 ${
+                selected.includes(opt)
+                  ? t.btnChipSelected
+                  : `${t.bgInput} ${t.textSecondary} border ${t.borderInput} hover:${t.borderHover} hover:${t.text}`
+              }`}
+            >
+              {highlightMatch(opt)}
+            </button>
+          ))
+        )}
+        {!searchQuery && options.length > maxShow && (
           <button
             onClick={() => setShowAll(!showAll)}
-            className="px-3 py-1.5 text-sm text-neutral-500 hover:text-white transition-colors duration-200"
+            className={`px-3 py-1.5 text-sm ${t.textSecondary} hover:${t.text} transition-colors duration-200`}
           >
             {showAll ? '− Show less' : `+ ${options.length - maxShow} more`}
           </button>
         )}
       </div>
-      <div className={`text-xs text-neutral-600 transition-all duration-200 ${selected.length > 0 ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`text-xs ${t.textSecondary} transition-all duration-200 ${selected.length > 0 ? 'opacity-100' : 'opacity-0'}`}>
         {selected.length} selected
       </div>
     </div>
@@ -135,7 +330,8 @@ const ChipSelect = ({ label, options, selected, onChange, maxShow = 8 }) => {
 };
 
 // Range Slider with dual handles on single track
-const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, formatValue }) => {
+const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, formatValue, isDark = false }) => {
+  const t = getTheme(isDark);
   // Format value to avoid floating point display issues
   const formatNum = (v) => {
     const decimals = step < 1 ? String(step).split('.')[1]?.length || 1 : 0;
@@ -227,7 +423,7 @@ const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, f
         if (!dragging) setIsTrackHovered(false);
       }}
     >
-      <label className="block text-xs uppercase tracking-widest text-neutral-500">{label}</label>
+      <label className={`block text-xs uppercase tracking-widest ${t.textLabel}`}>{label}</label>
       
       {/* Value displays that move with handles */}
       <div className="relative h-6">
@@ -238,7 +434,7 @@ const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, f
           }`}
           style={{ left: `${minPercent}%` }}
         >
-          <span className="px-2 py-1 bg-neutral-800 text-white text-xs font-mono rounded-md whitespace-nowrap">
+          <span className={`px-2 py-1 ${t.bgTooltip} ${t.text} text-xs font-mono rounded-md whitespace-nowrap`}>
             {format(values[0])}
           </span>
         </div>
@@ -250,7 +446,7 @@ const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, f
           }`}
           style={{ left: `${maxPercent}%` }}
         >
-          <span className="px-2 py-1 bg-neutral-800 text-white text-xs font-mono rounded-md whitespace-nowrap">
+          <span className={`px-2 py-1 ${t.bgTooltip} ${t.text} text-xs font-mono rounded-md whitespace-nowrap`}>
             {format(values[1])}
           </span>
         </div>
@@ -271,10 +467,10 @@ const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, f
         />
         
         {/* Visible thin track background */}
-        <div className="relative h-1 bg-neutral-800 rounded-full pointer-events-none">
+        <div className={`relative h-1 ${t.bgTrack} rounded-full pointer-events-none`}>
           {/* Active range fill */}
           <div 
-            className="absolute h-full bg-white/80 rounded-full transition-all duration-150 ease-out"
+            className={`absolute h-full ${t.bgFill} rounded-full transition-all duration-150 ease-out`}
             style={{ 
               left: `${minPercent}%`, 
               width: `${maxPercent - minPercent}%` 
@@ -303,7 +499,7 @@ const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, f
           
           {/* Handle - small, visible on hover */}
           <div
-            className={`w-3 h-3 bg-white rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${
+            className={`w-3 h-3 ${t.bgHandle} rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${
               dragging === 'min' 
                 ? 'opacity-100 scale-110' 
                 : showValues
@@ -334,7 +530,7 @@ const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, f
           
           {/* Handle - small, visible on hover */}
           <div
-            className={`w-3 h-3 bg-white rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${
+            className={`w-3 h-3 ${t.bgHandle} rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${
               dragging === 'max' 
                 ? 'opacity-100 scale-110' 
                 : showValues
@@ -346,7 +542,7 @@ const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, f
       </div>
       
       {/* Min/Max labels */}
-      <div className="flex justify-between text-xs text-neutral-600">
+      <div className={`flex justify-between text-xs ${t.textSecondary}`}>
         <span>{format(min)}</span>
         <span>{format(max)}</span>
       </div>
@@ -355,10 +551,11 @@ const RangeSlider = ({ label, min, max, values, onChange, unit = "", step = 1, f
 };
 
 // Single Slider with moving value tooltip
-const Slider = ({ label, value, onChange, min, max, step = 1, unit = "" }) => {
+const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark = false }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const trackRef = useRef(null);
+  const t = getTheme(isDark);
   
   const percent = ((value - min) / (max - min)) * 100;
   
@@ -406,7 +603,7 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "" }) => {
         if (!isDragging) setIsHovering(false);
       }}
     >
-      <label className="block text-xs uppercase tracking-widest text-neutral-500">{label}</label>
+      <label className={`block text-xs uppercase tracking-widest ${t.textLabel}`}>{label}</label>
       
       {/* Value display that moves with handle */}
       <div className="relative h-6">
@@ -416,7 +613,7 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "" }) => {
           }`}
           style={{ left: `${percent}%` }}
         >
-          <span className="px-2 py-1 bg-neutral-800 text-white text-xs font-mono rounded-md whitespace-nowrap">
+          <span className={`px-2 py-1 ${t.bgTooltip} ${t.text} text-xs font-mono rounded-md whitespace-nowrap`}>
             {formatVal(value)}{unit}
           </span>
         </div>
@@ -437,10 +634,10 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "" }) => {
         />
         
         {/* Visible thin track */}
-        <div className="relative h-1 bg-neutral-800 rounded-full pointer-events-none">
+        <div className={`relative h-1 ${t.bgTrack} rounded-full pointer-events-none`}>
           {/* Fill */}
           <div 
-            className="absolute h-full bg-white/80 rounded-full transition-all duration-150 ease-out"
+            className={`absolute h-full ${t.bgFill} rounded-full transition-all duration-150 ease-out`}
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -461,7 +658,7 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "" }) => {
           
           {/* Handle circle - small and only visible on hover */}
           <div
-            className={`w-3 h-3 bg-white rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${
+            className={`w-3 h-3 ${t.bgHandle} rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${
               isDragging 
                 ? 'opacity-100 scale-110' 
                 : showValue
@@ -473,7 +670,7 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "" }) => {
       </div>
       
       {/* Min/Max labels */}
-      <div className="flex justify-between text-xs text-neutral-600">
+      <div className={`flex justify-between text-xs ${t.textSecondary}`}>
         <span>{formatVal(min)}{unit}</span>
         <span>{formatVal(max)}{unit}</span>
       </div>
@@ -550,7 +747,7 @@ const LocationAdder = ({ label, options, selected, onChange, placeholder }) => {
   
   return (
     <div className="space-y-3">
-      <label className="block text-xs uppercase tracking-widest text-neutral-500">{label}</label>
+      <label className="block text-xs uppercase tracking-widest text-gray-700">{label}</label>
       
       {/* Selected locations */}
       {selected.length > 0 && (
@@ -558,12 +755,12 @@ const LocationAdder = ({ label, options, selected, onChange, placeholder }) => {
           {selected.map(loc => (
             <span
               key={loc}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-neutral-800 rounded-lg text-sm text-neutral-300 transition-all duration-200 hover:bg-neutral-700"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg text-sm text-gray-700 transition-all duration-200 hover:bg-gray-200"
             >
               {loc}
               <button
                 onClick={() => removeLocation(loc)}
-                className="ml-1 text-neutral-500 hover:text-white transition-colors duration-200"
+                className="ml-1 text-gray-700 hover:text-gray-900 transition-colors duration-200"
               >
                 ×
               </button>
@@ -576,29 +773,29 @@ const LocationAdder = ({ label, options, selected, onChange, placeholder }) => {
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-full px-4 py-3 bg-neutral-900 border rounded-lg text-left text-sm transition-all duration-200 flex items-center justify-between ${
+          className={`w-full px-4 py-3 bg-white border rounded-lg text-left text-sm transition-all duration-200 flex items-center justify-between ${
             isOpen 
-              ? 'border-neutral-600 text-neutral-400' 
-              : 'border-neutral-800 text-neutral-500 hover:border-neutral-600'
+              ? 'border-gray-400 text-gray-600' 
+              : 'border-gray-200 text-gray-700 hover:border-gray-400'
           }`}
         >
           <span>+ Add {placeholder || 'location'}</span>
           {isOpen && (
-            <span className="text-neutral-600 text-xs">ESC to close</span>
+            <span className="text-gray-600 text-xs">ESC to close</span>
           )}
         </button>
         
         {/* Dropdown with animation */}
-        <div className={`absolute z-50 w-full mt-1 bg-neutral-900 border border-neutral-800 rounded-lg shadow-2xl overflow-hidden transition-all duration-200 ease-out origin-top ${
+        <div className={`absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden transition-all duration-200 ease-out origin-top ${
           isOpen 
             ? 'opacity-100 scale-y-100 translate-y-0' 
             : 'opacity-0 scale-y-95 -translate-y-2 pointer-events-none'
         }`}>
           {/* Search Input */}
-          <div className="p-2 border-b border-neutral-800">
+          <div className="p-2 border-b border-gray-200">
             <div className="relative">
               <svg 
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" 
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" 
                 fill="none" 
                 viewBox="0 0 24 24" 
                 stroke="currentColor"
@@ -611,12 +808,12 @@ const LocationAdder = ({ label, options, selected, onChange, placeholder }) => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Search ${placeholder || 'location'}...`}
-                className="w-full pl-9 pr-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 transition-colors duration-200"
+                className="w-full pl-9 pr-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-900 placeholder-neutral-500 focus:outline-none focus:border-gray-400 transition-colors duration-200"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors duration-200"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-700 hover:text-gray-900 transition-colors duration-200"
                 >
                   ×
                 </button>
@@ -631,14 +828,14 @@ const LocationAdder = ({ label, options, selected, onChange, placeholder }) => {
                 <button
                   key={opt}
                   onClick={() => addLocation(opt)}
-                  className="w-full px-4 py-2 text-left text-sm text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all duration-150"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all duration-150"
                 >
                   {/* Highlight matching text */}
                   {searchQuery ? (
                     <span>
                       {opt.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, i) => (
                         part.toLowerCase() === searchQuery.toLowerCase() 
-                          ? <span key={i} className="text-white font-medium">{part}</span>
+                          ? <span key={i} className="text-gray-900 font-medium">{part}</span>
                           : part
                       ))}
                     </span>
@@ -646,7 +843,7 @@ const LocationAdder = ({ label, options, selected, onChange, placeholder }) => {
                 </button>
               ))
             ) : (
-              <div className="px-4 py-3 text-sm text-neutral-600 text-center">
+              <div className="px-4 py-3 text-sm text-gray-600 text-center">
                 {searchQuery ? `No results for "${searchQuery}"` : 'All options selected'}
               </div>
             )}
@@ -654,7 +851,7 @@ const LocationAdder = ({ label, options, selected, onChange, placeholder }) => {
           
           {/* Results count */}
           {filteredOptions.length > 0 && searchQuery && (
-            <div className="px-4 py-2 border-t border-neutral-800 text-xs text-neutral-600">
+            <div className="px-4 py-2 border-t border-gray-200 text-xs text-gray-600">
               {filteredOptions.length} result{filteredOptions.length !== 1 ? 's' : ''} found
             </div>
           )}
@@ -664,11 +861,424 @@ const LocationAdder = ({ label, options, selected, onChange, placeholder }) => {
   );
 };
 
+// Simple Select Dropdown
+const SelectDropdown = ({ value, onChange, options, placeholder, isDark = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const t = getTheme(isDark);
+  
+  // Filter options based on search
+  const filteredOptions = options.filter(opt => 
+    opt.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchQuery('');
+      }
+    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+  
+  // Focus search input when opening (only if many options)
+  useEffect(() => {
+    if (isOpen && searchInputRef.current && options.length > 5) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen, options.length]);
+  
+  // Highlight matching text
+  const highlightMatch = (text) => {
+    if (!searchQuery) return text;
+    const regex = new RegExp(`(${searchQuery})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} className="bg-yellow-200 text-gray-900">{part}</mark> : part
+    );
+  };
+  
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2.5 ${t.bgInput} border rounded-lg text-sm text-left flex items-center justify-between transition-all duration-200 ${
+          isOpen ? t.borderFocus : `${t.borderInput} hover:${t.borderHover}`
+        }`}
+      >
+        <span className={value ? t.text : t.textMuted}>
+          {value || placeholder}
+        </span>
+        <svg className={`w-4 h-4 ${t.textMuted} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      
+      {isOpen && (
+        <div className={`absolute z-50 w-full mt-1 ${t.bgCard} border ${t.border} rounded-lg shadow-xl overflow-hidden`}>
+          {/* Search input - only show for dropdowns with many options */}
+          {options.length > 5 && (
+            <div className={`p-2 border-b ${t.border}`}>
+              <div className="relative">
+                <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${t.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className={`w-full pl-9 pr-3 py-2 text-sm ${t.bgInput} border ${t.borderInput} ${t.text} rounded-md focus:outline-none`}
+                />
+              </div>
+            </div>
+          )}
+          
+          {/* Options list */}
+          <div className="max-h-48 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className={`px-3 py-2 text-sm ${t.textMuted} text-center`}>No results found</div>
+            ) : (
+              filteredOptions.map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => { 
+                    onChange(opt); 
+                    setIsOpen(false); 
+                    setSearchQuery('');
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                    value === opt 
+                      ? `${isDark ? 'bg-neutral-800' : 'bg-gray-50'} ${t.text} font-medium` 
+                      : `${t.textSecondary} hover:${t.bgHover}`
+                  }`}
+                >
+                  {highlightMatch(opt)}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Work Locations Section
+const WorkLocationsSection = ({ entries, onChange, isDark = false }) => {
+  const t = getTheme(isDark);
+  const addEntry = () => {
+    const newId = Math.max(0, ...entries.map(e => e.id)) + 1;
+    const personNum = entries.length + 1;
+    const defaultPerson = personNum === 1 ? 'You' : personNum === 2 ? 'Spouse' : `Person ${personNum}`;
+    onChange([...entries, { id: newId, person: defaultPerson, location: '', frequency: 'Daily (5x per week)' }]);
+  };
+  
+  const updateEntry = (id, field, value) => {
+    onChange(entries.map(e => e.id === id ? { ...e, [field]: value } : e));
+  };
+  
+  const removeEntry = (id) => {
+    onChange(entries.filter(e => e.id !== id));
+  };
+  
+  return (
+    <div className={`space-y-3 p-4 ${isDark ? 'bg-neutral-800/50' : 'bg-gray-50'} rounded-xl border ${t.border}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={t.textSecondary}>{Icons.briefcase}</span>
+        <span className={`font-medium ${t.text}`}>Work Locations</span>
+      </div>
+      
+      {entries.map((entry) => (
+        <div key={entry.id} className="grid grid-cols-12 gap-2 items-end">
+          <div className="col-span-3">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Person</label>
+            <input
+              type="text"
+              value={entry.person}
+              onChange={(e) => updateEntry(entry.id, 'person', e.target.value)}
+              className={`w-full px-3 py-2.5 ${t.bgInput} border ${t.borderInput} ${t.text} rounded-lg text-sm focus:outline-none focus:${t.borderFocus}`}
+            />
+          </div>
+          <div className="col-span-4">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Location</label>
+            <SelectDropdown
+              value={entry.location}
+              onChange={(val) => updateEntry(entry.id, 'location', val)}
+              options={WORK_LOCATIONS}
+              placeholder="Select..."
+              isDark={isDark}
+            />
+          </div>
+          <div className="col-span-4">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Frequency</label>
+            <SelectDropdown
+              value={entry.frequency}
+              onChange={(val) => updateEntry(entry.id, 'frequency', val)}
+              options={FREQUENCY_OPTIONS}
+              placeholder="Select..."
+              isDark={isDark}
+            />
+          </div>
+          <div className="col-span-1 flex justify-center">
+            <button
+              onClick={() => removeEntry(entry.id)}
+              className={`p-2 text-red-500 hover:text-red-700 ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'} rounded-lg transition-colors`}
+            >
+              {Icons.trash}
+            </button>
+          </div>
+        </div>
+      ))}
+      
+      <button
+        onClick={addEntry}
+        className={`w-full py-2.5 border-2 border-dashed ${t.borderDashed} rounded-lg text-sm ${isDark ? 'text-blue-400 hover:border-blue-500 hover:bg-blue-500/10' : 'text-blue-600 hover:border-blue-400 hover:bg-blue-50'} font-medium transition-all`}
+      >
+        + {entries.length > 0 ? 'ADD ANOTHER WORK LOCATION' : 'ADD WORK LOCATION'}
+      </button>
+    </div>
+  );
+};
+
+// School Locations Section
+const SchoolLocationsSection = ({ entries, onChange, isDark = false }) => {
+  const t = getTheme(isDark);
+  const addEntry = () => {
+    const newId = Math.max(0, ...entries.map(e => e.id)) + 1;
+    const childNum = entries.length + 1;
+    onChange([...entries, { id: newId, child: `Child ${childNum}`, school: '' }]);
+  };
+  
+  const updateEntry = (id, field, value) => {
+    onChange(entries.map(e => e.id === id ? { ...e, [field]: value } : e));
+  };
+  
+  const removeEntry = (id) => {
+    onChange(entries.filter(e => e.id !== id));
+  };
+  
+  return (
+    <div className={`space-y-3 p-4 ${isDark ? 'bg-neutral-800/50' : 'bg-gray-50'} rounded-xl border ${t.border}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={t.textSecondary}>{Icons.academic}</span>
+        <span className={`font-medium ${t.text}`}>School Locations</span>
+      </div>
+      
+      {entries.map((entry) => (
+        <div key={entry.id} className="grid grid-cols-12 gap-2 items-end">
+          <div className="col-span-4">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Child</label>
+            <input
+              type="text"
+              value={entry.child}
+              onChange={(e) => updateEntry(entry.id, 'child', e.target.value)}
+              className={`w-full px-3 py-2.5 ${t.bgInput} border ${t.borderInput} ${t.text} rounded-lg text-sm focus:outline-none focus:${t.borderFocus}`}
+            />
+          </div>
+          <div className="col-span-7">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>School</label>
+            <SelectDropdown
+              value={entry.school}
+              onChange={(val) => updateEntry(entry.id, 'school', val)}
+              options={SCHOOLS_SAMPLE}
+              placeholder="Select school..."
+              isDark={isDark}
+            />
+          </div>
+          <div className="col-span-1 flex justify-center">
+            <button
+              onClick={() => removeEntry(entry.id)}
+              className={`p-2 text-red-500 hover:text-red-700 ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'} rounded-lg transition-colors`}
+            >
+              {Icons.trash}
+            </button>
+          </div>
+        </div>
+      ))}
+      
+      <button
+        onClick={addEntry}
+        className={`w-full py-2.5 border-2 border-dashed ${t.borderDashed} rounded-lg text-sm ${isDark ? 'text-blue-400 hover:border-blue-500 hover:bg-blue-500/10' : 'text-blue-600 hover:border-blue-400 hover:bg-blue-50'} font-medium transition-all`}
+      >
+        + {entries.length > 0 ? 'ADD ANOTHER CHILD' : 'ADD CHILD'}
+      </button>
+    </div>
+  );
+};
+
+// Parents' Homes Section
+const ParentsHomesSection = ({ entries, onChange, isDark = false }) => {
+  const t = getTheme(isDark);
+  const addEntry = () => {
+    const newId = Math.max(0, ...entries.map(e => e.id)) + 1;
+    const parentNum = entries.length + 1;
+    onChange([...entries, { id: newId, parent: `Parent ${parentNum}`, location: '', frequency: 'Weekly (1x per week)' }]);
+  };
+  
+  const updateEntry = (id, field, value) => {
+    onChange(entries.map(e => e.id === id ? { ...e, [field]: value } : e));
+  };
+  
+  const removeEntry = (id) => {
+    onChange(entries.filter(e => e.id !== id));
+  };
+  
+  return (
+    <div className={`space-y-3 p-4 ${isDark ? 'bg-neutral-800/50' : 'bg-gray-50'} rounded-xl border ${t.border}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={t.textSecondary}>{Icons.users}</span>
+        <span className={`font-medium ${t.text}`}>Parents' Homes</span>
+      </div>
+      
+      {entries.map((entry) => (
+        <div key={entry.id} className="grid grid-cols-12 gap-2 items-end">
+          <div className="col-span-3">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Parent</label>
+            <input
+              type="text"
+              value={entry.parent}
+              onChange={(e) => updateEntry(entry.id, 'parent', e.target.value)}
+              className={`w-full px-3 py-2.5 ${t.bgInput} border ${t.borderInput} ${t.text} rounded-lg text-sm focus:outline-none focus:${t.borderFocus}`}
+            />
+          </div>
+          <div className="col-span-4">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Location</label>
+            <SelectDropdown
+              value={entry.location}
+              onChange={(val) => updateEntry(entry.id, 'location', val)}
+              options={HDB_TOWNS}
+              placeholder="Select..."
+              isDark={isDark}
+            />
+          </div>
+          <div className="col-span-4">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Frequency</label>
+            <SelectDropdown
+              value={entry.frequency}
+              onChange={(val) => updateEntry(entry.id, 'frequency', val)}
+              options={FREQUENCY_OPTIONS}
+              placeholder="Select..."
+              isDark={isDark}
+            />
+          </div>
+          <div className="col-span-1 flex justify-center">
+            <button
+              onClick={() => removeEntry(entry.id)}
+              className={`p-2 text-red-500 hover:text-red-700 ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'} rounded-lg transition-colors`}
+            >
+              {Icons.trash}
+            </button>
+          </div>
+        </div>
+      ))}
+      
+      <button
+        onClick={addEntry}
+        className={`w-full py-2.5 border-2 border-dashed ${t.borderDashed} rounded-lg text-sm ${isDark ? 'text-blue-400 hover:border-blue-500 hover:bg-blue-500/10' : 'text-blue-600 hover:border-blue-400 hover:bg-blue-50'} font-medium transition-all`}
+      >
+        + {entries.length > 0 ? "ADD ANOTHER PARENT'S HOME" : "ADD PARENT'S HOME"}
+      </button>
+    </div>
+  );
+};
+
+// Other Destinations Section (Hawker, Mall, Gym)
+const OtherDestinationsSection = ({ entries, onChange, isDark = false }) => {
+  const t = getTheme(isDark);
+  const addEntry = () => {
+    const newId = Math.max(0, ...entries.map(e => e.id)) + 1;
+    onChange([...entries, { id: newId, type: 'Hawker', location: '', frequency: '1-2x per week' }]);
+  };
+  
+  const updateEntry = (id, field, value) => {
+    onChange(entries.map(e => e.id === id ? { ...e, [field]: value } : e));
+  };
+  
+  const removeEntry = (id) => {
+    onChange(entries.filter(e => e.id !== id));
+  };
+  
+  const getOptionsForType = (type) => {
+    switch(type) {
+      case 'Hawker': return HAWKER_SAMPLE;
+      case 'Mall': return MALLS_SAMPLE;
+      case 'Gym': return GYM_SAMPLE;
+      default: return [];
+    }
+  };
+  
+  return (
+    <div className={`space-y-3 p-4 ${isDark ? 'bg-neutral-800/50' : 'bg-gray-50'} rounded-xl border ${t.border}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={t.textSecondary}>{Icons.mapPin}</span>
+        <span className={`font-medium ${t.text}`}>Other Frequent Places</span>
+      </div>
+      
+      {entries.map((entry) => (
+        <div key={entry.id} className="grid grid-cols-12 gap-2 items-end">
+          <div className="col-span-2">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Type</label>
+            <SelectDropdown
+              value={entry.type}
+              onChange={(val) => updateEntry(entry.id, 'type', val)}
+              options={['Hawker', 'Mall', 'Gym']}
+              placeholder="Type"
+              isDark={isDark}
+            />
+          </div>
+          <div className="col-span-5">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Location</label>
+            <SelectDropdown
+              value={entry.location}
+              onChange={(val) => updateEntry(entry.id, 'location', val)}
+              options={getOptionsForType(entry.type)}
+              placeholder="Select..."
+              isDark={isDark}
+            />
+          </div>
+          <div className="col-span-4">
+            <label className={`block text-xs ${t.textSecondary} mb-1`}>Frequency</label>
+            <SelectDropdown
+              value={entry.frequency}
+              onChange={(val) => updateEntry(entry.id, 'frequency', val)}
+              options={FREQUENCY_OPTIONS}
+              placeholder="Select..."
+              isDark={isDark}
+            />
+          </div>
+          <div className="col-span-1 flex justify-center">
+            <button
+              onClick={() => removeEntry(entry.id)}
+              className={`p-2 text-red-500 hover:text-red-700 ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'} rounded-lg transition-colors`}
+            >
+              {Icons.trash}
+            </button>
+          </div>
+        </div>
+      ))}
+      
+      <button
+        onClick={addEntry}
+        className={`w-full py-2.5 border-2 border-dashed ${t.borderDashed} rounded-lg text-sm ${isDark ? 'text-blue-400 hover:border-blue-500 hover:bg-blue-500/10' : 'text-blue-600 hover:border-blue-400 hover:bg-blue-50'} font-medium transition-all`}
+      >
+        + {entries.length > 0 ? 'ADD ANOTHER FREQUENT PLACE' : 'ADD FREQUENT PLACE'}
+      </button>
+    </div>
+  );
+};
+
 // Section Card with smooth accordion
-const Section = ({ title, icon, children, defaultOpen = true }) => {
+const Section = ({ title, icon, children, defaultOpen = true, isDark = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const contentRef = useRef(null);
   const [contentHeight, setContentHeight] = useState(defaultOpen ? 'auto' : 0);
+  const t = getTheme(isDark);
   
   useEffect(() => {
     if (contentRef.current) {
@@ -677,18 +1287,18 @@ const Section = ({ title, icon, children, defaultOpen = true }) => {
   }, [isOpen]);
   
   return (
-    <div className="border border-neutral-800 rounded-xl transition-all duration-300">
+    <div className={`border ${t.border} rounded-xl transition-all duration-300 ${t.bgCard}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-5 py-4 flex items-center justify-between bg-neutral-900/50 hover:bg-neutral-900 transition-all duration-200 rounded-t-xl"
+        className={`w-full px-5 py-4 flex items-center justify-between ${isDark ? 'bg-neutral-800/50 hover:bg-neutral-800' : 'bg-gray-50 hover:bg-gray-100'} transition-all duration-200 rounded-t-xl`}
       >
-        <span className="flex items-center gap-3 text-white font-medium">
-          <span className="text-lg">{icon}</span>
+        <span className={`flex items-center gap-3 ${t.text} font-medium`}>
+          <span className={t.textSecondary}>{icon}</span>
           {title}
         </span>
-        <span className={`text-neutral-500 transition-transform duration-300 ease-out ${isOpen ? 'rotate-180' : ''}`}>
-          ▼
-        </span>
+        <svg className={`w-4 h-4 ${t.textMuted} transition-transform duration-300 ease-out ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
       <div 
         className="transition-all duration-300 ease-out"
@@ -697,7 +1307,7 @@ const Section = ({ title, icon, children, defaultOpen = true }) => {
           overflow: isOpen ? 'visible' : 'hidden'
         }}
       >
-        <div ref={contentRef} className="p-5 space-y-5 bg-black/30 rounded-b-xl">
+        <div ref={contentRef} className={`p-5 space-y-5 ${t.bgCard} rounded-b-xl`}>
           {children}
         </div>
       </div>
@@ -706,59 +1316,64 @@ const Section = ({ title, icon, children, defaultOpen = true }) => {
 };
 
 // Recommendation Card
-const RecommendationCard = ({ rec, rank }) => (
-  <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 transition-all duration-300 ease-out hover:border-neutral-700 hover:shadow-lg hover:shadow-black/50 hover:-translate-y-0.5">
-    <div className="flex items-start justify-between mb-4">
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <span className="text-xs font-mono bg-white text-black px-2 py-0.5 rounded transition-transform duration-200 hover:scale-105">
-            #{rank}
-          </span>
-          <span className="text-lg font-medium text-white">{rec.town}</span>
+const RecommendationCard = ({ rec, rank, isDark = false }) => {
+  const t = getTheme(isDark);
+  return (
+    <div className={`${t.bgCard} border ${t.border} rounded-xl p-5 transition-all duration-300 ease-out hover:${t.borderHover} hover:shadow-lg hover:-translate-y-0.5`}>
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <span className={`text-xs font-mono ${isDark ? 'bg-white text-black' : 'bg-gray-900 text-white'} px-2 py-0.5 rounded transition-transform duration-200 hover:scale-105`}>
+              #{rank}
+            </span>
+            <span className={`text-lg font-medium ${t.text}`}>{rec.town}</span>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} transition-colors duration-200`}>{rec.flatType}</span>
+            <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} transition-colors duration-200`}>{rec.flatModel}</span>
+          </div>
         </div>
-        <div className="flex gap-2 mt-2">
-          <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 transition-colors duration-200 hover:bg-neutral-700">{rec.flatType}</span>
-          <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 transition-colors duration-200 hover:bg-neutral-700">{rec.flatModel}</span>
+        <div className="text-right">
+          <p className={`text-2xl font-mono ${t.text}`}>${rec.predictedPrice.toLocaleString()}</p>
+          <p className={`text-xs ${t.textSecondary} font-mono`}>
+            ${rec.priceRange.low.toLocaleString()} – ${rec.priceRange.high.toLocaleString()}
+          </p>
         </div>
       </div>
-      <div className="text-right">
-        <p className="text-2xl font-mono text-white">${rec.predictedPrice.toLocaleString()}</p>
-        <p className="text-xs text-neutral-600 font-mono">
-          ${rec.priceRange.low.toLocaleString()} – ${rec.priceRange.high.toLocaleString()}
-        </p>
+      
+      <div className={`grid grid-cols-4 gap-3 py-3 border-t border-b ${t.border} mb-3`}>
+        <div>
+          <p className={`text-xs ${t.textSecondary}`}>Floor Area</p>
+          <p className={`text-sm ${t.textSecondary}`}>{rec.floorArea.min}-{rec.floorArea.max} sqm</p>
+        </div>
+        <div>
+          <p className={`text-xs ${t.textSecondary}`}>Storey</p>
+          <p className={`text-sm ${t.textSecondary}`}>{rec.storeyRange}</p>
+        </div>
+        <div>
+          <p className={`text-xs ${t.textSecondary}`}>Lease Left</p>
+          <p className={`text-sm ${t.textSecondary}`}>{rec.remainingLease} yrs</p>
+        </div>
+        <div>
+          <p className={`text-xs ${t.textSecondary}`}>Score</p>
+          <p className={`text-sm ${t.matchGood}`}>{rec.matchScore}%</p>
+        </div>
+      </div>
+      
+      <div className={`flex gap-4 text-xs ${t.textSecondary}`}>
+        <span className="flex items-center gap-1 transition-colors duration-200">{Icons.train} {rec.distances.mrt}km</span>
+        <span className="flex items-center gap-1 transition-colors duration-200">{Icons.school} {rec.distances.school}km</span>
+        <span className="flex items-center gap-1 transition-colors duration-200">{Icons.cart} {rec.distances.mall}km</span>
+        <span className="flex items-center gap-1 transition-colors duration-200">{Icons.utensils} {rec.distances.hawker}km</span>
       </div>
     </div>
-    
-    <div className="grid grid-cols-4 gap-3 py-3 border-t border-b border-neutral-800 mb-3">
-      <div>
-        <p className="text-xs text-neutral-600">Floor Area</p>
-        <p className="text-sm text-neutral-300">{rec.floorArea.min}-{rec.floorArea.max} sqm</p>
-      </div>
-      <div>
-        <p className="text-xs text-neutral-600">Storey</p>
-        <p className="text-sm text-neutral-300">{rec.storeyRange}</p>
-      </div>
-      <div>
-        <p className="text-xs text-neutral-600">Lease Left</p>
-        <p className="text-sm text-neutral-300">{rec.remainingLease} yrs</p>
-      </div>
-      <div>
-        <p className="text-xs text-neutral-600">Match</p>
-        <p className="text-sm text-emerald-400">{rec.matchScore}%</p>
-      </div>
-    </div>
-    
-    <div className="flex gap-4 text-xs text-neutral-500">
-      <span className="transition-colors duration-200 hover:text-neutral-300">🚇 {rec.distances.mrt}km</span>
-      <span className="transition-colors duration-200 hover:text-neutral-300">🏫 {rec.distances.school}km</span>
-      <span className="transition-colors duration-200 hover:text-neutral-300">🛒 {rec.distances.mall}km</span>
-      <span className="transition-colors duration-200 hover:text-neutral-300">🍜 {rec.distances.hawker}km</span>
-    </div>
-  </div>
-);
+  );
+};
 
 // ============== MAIN APP ==============
-export default function App() {
+export default function HDBRecommendation({ isDark = false }) {
+  const t = getTheme(isDark);
+  
   // Form state
   const [targetYear, setTargetYear] = useState(2026);
   const [budget, setBudget] = useState([400000, 700000]);
@@ -767,25 +1382,24 @@ export default function App() {
   const [flatModels, setFlatModels] = useState([]);
   const [floorArea, setFloorArea] = useState([70, 120]);
   const [storeyRanges, setStoreyRanges] = useState([]);
-  const [minLease, setMinLease] = useState(60);
+  const [leaseRange, setLeaseRange] = useState([30, 65]);
   
-  // Amenity distances
-  const [maxMrt, setMaxMrt] = useState(1.0);
-  const [maxSchool, setMaxSchool] = useState(1.0);
-  const [maxMall, setMaxMall] = useState(1.5);
-  const [maxHawker, setMaxHawker] = useState(1.0);
+  // Amenity distances (defaults at ~1/3 of range)
+  const [maxMrt, setMaxMrt] = useState(0.9);      // range 0.3-2.0, 1/3 ≈ 0.9
+  const [maxSchool, setMaxSchool] = useState(0.5); // range 0.3-1.0, 1/3 ≈ 0.5
+  const [maxMall, setMaxMall] = useState(1.2);     // range 0.3-3.0, 1/3 ≈ 1.2
+  const [maxHawker, setMaxHawker] = useState(0.9); // range 0.3-2.0, 1/3 ≈ 0.9
   
-  // Frequent destinations
+  // Frequent destinations - structured data
   const [workLocations, setWorkLocations] = useState([]);
   const [schoolLocations, setSchoolLocations] = useState([]);
-  const [parentsTowns, setParentsTowns] = useState([]);
-  const [eatingPlaces, setEatingPlaces] = useState([]);
-  const [shoppingPlaces, setShoppingPlaces] = useState([]);
-  const [gymLocations, setGymLocations] = useState([]);
+  const [parentsHomes, setParentsHomes] = useState([]);
+  const [otherDestinations, setOtherDestinations] = useState([]);
   
   // Results
   const [recommendations, setRecommendations] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [submittedYear, setSubmittedYear] = useState(null);
 
   const handleSearch = async () => {
     setIsLoading(true);
@@ -801,18 +1415,19 @@ export default function App() {
       flatModels,
       floorArea,
       storeyRanges,
-      minLease,
+      leaseRange,
       maxDistances: { mrt: maxMrt, school: maxSchool, mall: maxMall, hawker: maxHawker },
-      destinations: { workLocations, schoolLocations, parentsTowns, eatingPlaces, shoppingPlaces, gymLocations }
+      destinations: { workLocations, schoolLocations, parentsHomes, otherDestinations }
     };
     
     const results = generateRecommendations(criteria);
     setRecommendations(results);
+    setSubmittedYear(targetYear);
     setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className={`${t.text} transition-colors duration-300`}>
       {/* Main */}
       <main className="max-w-6xl mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-5 gap-8 overflow-visible">
@@ -821,10 +1436,10 @@ export default function App() {
           <div className="lg:col-span-3 space-y-4 overflow-visible">
             
             {/* Section 1: Purchase Plan */}
-            <Section title="Purchase Plan" icon="📅" defaultOpen={true}>
+            <Section title="Purchase Plan" icon={Icons.calendar} defaultOpen={true} isDark={isDark}>
               <div className="space-y-5">
                 <div>
-                  <label className="block text-xs uppercase tracking-widest text-neutral-500 mb-3">
+                  <label className={`block text-xs uppercase tracking-widest ${t.textLabel} mb-3`}>
                     Target Purchase Year
                   </label>
                   <div className="grid grid-cols-4 gap-2">
@@ -834,8 +1449,8 @@ export default function App() {
                         onClick={() => setTargetYear(year)}
                         className={`py-3 rounded-lg text-sm font-medium transition-all duration-200 ease-out transform active:scale-95 ${
                           targetYear === year
-                            ? 'bg-white text-black shadow-lg shadow-white/10'
-                            : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:border-neutral-600 hover:text-neutral-300'
+                            ? t.btnChipSelected
+                            : `${t.bgInput} ${t.textSecondary} border ${t.border} hover:${t.borderHover} hover:${t.text}`
                         }`}
                       >
                         {year}
@@ -852,18 +1467,20 @@ export default function App() {
                   values={budget}
                   onChange={setBudget}
                   formatValue={(v) => `$${(v/1000).toFixed(0)}K`}
+                  isDark={isDark}
                 />
               </div>
             </Section>
 
             {/* Section 2: Property Criteria */}
-            <Section title="Property Criteria" icon="🏠" defaultOpen={true}>
+            <Section title="Property Criteria" icon={Icons.home} defaultOpen={true} isDark={isDark}>
               <ChipSelect
                 label="Preferred Towns"
                 options={HDB_TOWNS}
                 selected={towns}
                 onChange={setTowns}
                 maxShow={10}
+                isDark={isDark}
               />
               
               <ChipSelect
@@ -872,6 +1489,7 @@ export default function App() {
                 selected={flatTypes}
                 onChange={setFlatTypes}
                 maxShow={10}
+                isDark={isDark}
               />
               
               <ChipSelect
@@ -880,6 +1498,7 @@ export default function App() {
                 selected={flatModels}
                 onChange={setFlatModels}
                 maxShow={6}
+                isDark={isDark}
               />
               
               <RangeSlider
@@ -890,6 +1509,7 @@ export default function App() {
                 values={floorArea}
                 onChange={setFloorArea}
                 unit=" sqm"
+                isDark={isDark}
               />
               
               <ChipSelect
@@ -898,20 +1518,54 @@ export default function App() {
                 selected={storeyRanges}
                 onChange={setStoreyRanges}
                 maxShow={6}
+                isDark={isDark}
               />
               
-              <Slider
-                label="Minimum Remaining Lease"
-                value={minLease}
-                onChange={setMinLease}
-                min={40}
+              <RangeSlider
+                label="Remaining Lease Range"
+                min={0}
                 max={95}
-                unit=" years"
+                step={1}
+                values={leaseRange}
+                onChange={setLeaseRange}
+                formatValue={(v) => `${v} yrs`}
+                isDark={isDark}
               />
             </Section>
 
-            {/* Section 3: Amenity Proximity */}
-            <Section title="Amenity Proximity" icon="📍" defaultOpen={true}>
+            {/* Section 3: Frequent Destinations (Optional) */}
+            <Section title="Frequent Destinations" icon={Icons.map} defaultOpen={true} isDark={isDark}>
+              <p className={`text-xs ${t.textSecondary} mb-4`}>
+                Add locations you visit frequently. We'll find flats convenient to these places. All fields are optional.
+              </p>
+              
+              <WorkLocationsSection 
+                entries={workLocations} 
+                onChange={setWorkLocations}
+                isDark={isDark}
+              />
+              
+              <SchoolLocationsSection 
+                entries={schoolLocations} 
+                onChange={setSchoolLocations}
+                isDark={isDark}
+              />
+              
+              <ParentsHomesSection 
+                entries={parentsHomes} 
+                onChange={setParentsHomes}
+                isDark={isDark}
+              />
+              
+              <OtherDestinationsSection 
+                entries={otherDestinations} 
+                onChange={setOtherDestinations}
+                isDark={isDark}
+              />
+            </Section>
+
+            {/* Section 4: Amenity Proximity */}
+            <Section title="Amenity Proximity" icon={Icons.mapPin} defaultOpen={true} isDark={isDark}>
               <Slider
                 label="Max Distance to MRT"
                 value={maxMrt}
@@ -920,91 +1574,40 @@ export default function App() {
                 max={2.0}
                 step={0.1}
                 unit=" km"
+                isDark={isDark}
               />
               
               <Slider
-                label="Max Distance to School"
+                label="Max Distance to Primary School"
                 value={maxSchool}
                 onChange={setMaxSchool}
                 min={0.3}
-                max={2.0}
+                max={1.0}
                 step={0.1}
                 unit=" km"
+                isDark={isDark}
               />
               
               <Slider
-                label="Max Distance to Mall"
+                label="Max Distance to Shopping Mall"
                 value={maxMall}
                 onChange={setMaxMall}
                 min={0.3}
                 max={3.0}
                 step={0.1}
                 unit=" km"
+                isDark={isDark}
               />
               
               <Slider
-                label="Max Distance to Hawker"
+                label="Max Distance to Hawker Center"
                 value={maxHawker}
                 onChange={setMaxHawker}
                 min={0.3}
                 max={2.0}
                 step={0.1}
                 unit=" km"
-              />
-            </Section>
-
-            {/* Section 4: Frequent Destinations (Optional) */}
-            <Section title="Frequent Destinations" icon="🗺" defaultOpen={false}>
-              <p className="text-xs text-neutral-600 mb-4">
-                Add locations you visit frequently. We'll find flats convenient to these places. All fields are optional.
-              </p>
-              
-              <LocationAdder
-                label="Work Locations"
-                options={WORK_LOCATIONS}
-                selected={workLocations}
-                onChange={setWorkLocations}
-                placeholder="work location"
-              />
-              
-              <LocationAdder
-                label="School Locations"
-                options={SCHOOLS_SAMPLE}
-                selected={schoolLocations}
-                onChange={setSchoolLocations}
-                placeholder="school"
-              />
-              
-              <LocationAdder
-                label="Parents' Home Town"
-                options={HDB_TOWNS}
-                selected={parentsTowns}
-                onChange={setParentsTowns}
-                placeholder="town"
-              />
-              
-              <LocationAdder
-                label="Favourite Eating Places"
-                options={HAWKER_SAMPLE}
-                selected={eatingPlaces}
-                onChange={setEatingPlaces}
-                placeholder="hawker/food centre"
-              />
-              
-              <LocationAdder
-                label="Shopping Places"
-                options={MALLS_SAMPLE}
-                selected={shoppingPlaces}
-                onChange={setShoppingPlaces}
-                placeholder="mall"
-              />
-              
-              <LocationAdder
-                label="Gym / Fitness"
-                options={GYM_SAMPLE}
-                selected={gymLocations}
-                onChange={setGymLocations}
-                placeholder="gym"
+                isDark={isDark}
               />
             </Section>
 
@@ -1012,12 +1615,12 @@ export default function App() {
             <button
               onClick={handleSearch}
               disabled={isLoading}
-              className="relative z-0 w-full py-4 bg-white text-black rounded-xl font-semibold text-lg
+              className={`relative z-0 w-full py-4 ${t.btnPrimary} rounded-xl font-semibold text-lg
                        transition-all duration-300 ease-out
-                       hover:bg-neutral-200 hover:shadow-xl hover:shadow-white/20 hover:-translate-y-0.5
+                       hover:shadow-xl hover:-translate-y-0.5
                        active:translate-y-0 active:shadow-lg
                        disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none
-                       shadow-lg shadow-white/10"
+                       shadow-lg`}
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -1036,50 +1639,34 @@ export default function App() {
           {/* Right: Results (2 cols) */}
           <div className="lg:col-span-2">
             <div className="sticky top-6">
-              <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
+              <h2 className={`text-lg font-medium mb-4 flex items-center gap-2 ${t.text}`}>
                 Recommendations
                 {recommendations && (
-                  <span className="text-xs font-normal text-neutral-500">
-                    for {targetYear}
+                  <span className={`text-xs font-normal ${t.textSecondary}`}>
+                    for {submittedYear}
                   </span>
                 )}
               </h2>
               
               {!recommendations ? (
-                <div className="border border-dashed border-neutral-800 rounded-xl p-10 text-center">
-                  <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-neutral-900 flex items-center justify-center">
-                    <span className="text-2xl">🔍</span>
+                <div className={`border border-dashed ${t.borderDashed} rounded-xl p-10 text-center`}>
+                  <div className={`w-14 h-14 mx-auto mb-4 rounded-xl ${t.bgEmpty} flex items-center justify-center ${t.textMuted}`}>
+                    {Icons.search}
                   </div>
-                  <p className="text-neutral-500 text-sm">
+                  <p className={`${t.textSecondary} text-sm`}>
                     Set your preferences and click<br />"Find Recommendations"
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Summary */}
-                  <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4 mb-4">
-                    <div className="grid grid-cols-2 gap-4 text-center">
-                      <div>
-                        <p className="text-2xl font-mono text-white">{recommendations.length}</p>
-                        <p className="text-xs text-neutral-500">Matches Found</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-mono text-white">
-                          ${(recommendations[0]?.predictedPrice / 1000).toFixed(0)}K
-                        </p>
-                        <p className="text-xs text-neutral-500">Best Match Price</p>
-                      </div>
-                    </div>
-                  </div>
-                  
                   {/* Results */}
                   {recommendations.map((rec, i) => (
-                    <RecommendationCard key={rec.id} rec={rec} rank={i + 1} />
+                    <RecommendationCard key={rec.id} rec={rec} rank={i + 1} isDark={isDark} />
                   ))}
                   
                   {/* Disclaimer */}
-                  <p className="text-xs text-neutral-700 text-center pt-4">
-                    Prices are ML predictions for {targetYear}. Actual prices may vary.
+                  <p className={`text-xs ${t.textSecondary} text-center pt-4`}>
+                    Prices are ML predictions for {submittedYear}. Actual prices may vary.
                   </p>
                 </div>
               )}
@@ -1089,8 +1676,8 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-neutral-900 mt-10">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-3 text-xs text-neutral-600">
+      <footer className={`border-t ${t.border} mt-10 transition-colors duration-300`}>
+        <div className={`max-w-6xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-3 text-xs ${t.textMuted}`}>
           <span>Based on 217K+ HDB transactions & ML price predictions</span>
           <span>Data Minions • SUTD Production Ready ML</span>
         </div>

@@ -1,4 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+
+// Theme helper - generates class names based on isDark prop
+const getTheme = (isDark) => ({
+  bg: isDark ? 'bg-black' : 'bg-gray-50',
+  bgCard: isDark ? 'bg-neutral-900' : 'bg-white',
+  bgInput: isDark ? 'bg-neutral-900' : 'bg-white',
+  bgSection: isDark ? 'bg-neutral-900/50' : 'bg-gray-50',
+  bgTrack: isDark ? 'bg-neutral-800' : 'bg-gray-200',
+  bgFill: isDark ? 'bg-white' : 'bg-gray-900',
+  bgHandle: isDark ? 'bg-white' : 'bg-gray-900',
+  bgHover: isDark ? 'bg-neutral-800' : 'bg-gray-100',
+  bgTooltip: isDark ? 'bg-neutral-800' : 'bg-gray-100',
+  bgEmpty: isDark ? 'bg-neutral-900' : 'bg-gray-100',
+  text: isDark ? 'text-white' : 'text-gray-900',
+  textSecondary: isDark ? 'text-neutral-400' : 'text-gray-600',
+  textMuted: isDark ? 'text-neutral-500' : 'text-gray-500',
+  textLabel: isDark ? 'text-neutral-500' : 'text-gray-500',
+  border: isDark ? 'border-neutral-800' : 'border-gray-200',
+  borderInput: isDark ? 'border-neutral-800' : 'border-gray-300',
+  borderHover: isDark ? 'border-neutral-700' : 'border-gray-400',
+  borderFocus: isDark ? 'border-neutral-600' : 'border-gray-400',
+  borderDashed: isDark ? 'border-neutral-800' : 'border-gray-300',
+  btnPrimary: isDark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-gray-900 text-white hover:bg-gray-800',
+  tagBg: isDark ? 'bg-neutral-800' : 'bg-white border border-gray-200',
+  tagText: isDark ? 'text-neutral-400' : 'text-gray-700',
+  barSelected: isDark ? 'bg-white' : 'bg-gray-900',
+  barUnselected: isDark ? 'bg-neutral-700' : 'bg-gray-300',
+  barHover: isDark ? 'group-hover:bg-neutral-600' : 'group-hover:bg-gray-400',
+  success: isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600',
+  error: isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600',
+});
 
 // ============== CONFIG ==============
 const HDB_TOWNS = [
@@ -90,65 +121,256 @@ const predictMarketPrice = (features, year) => {
 };
 
 // ============== COMPONENTS ==============
-const Select = ({ label, value, onChange, options }) => (
-  <div className="space-y-2">
-    <label className="block text-xs uppercase tracking-widest text-neutral-500">
-      {label}
-    </label>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3
-                 text-white text-sm focus:outline-none focus:border-neutral-600 
-                 transition-colors cursor-pointer hover:border-neutral-700"
-    >
-      {options.map(opt => (
-        <option key={opt} value={opt} className="bg-neutral-900">{opt}</option>
-      ))}
-    </select>
-  </div>
-);
+const Select = ({ label, value, onChange, options, isDark = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const t = getTheme(isDark);
+  
+  // Filter options based on search
+  const filteredOptions = options.filter(opt => 
+    opt.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchQuery('');
+      }
+    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+  
+  // Focus search input when opening
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+  
+  // Highlight matching text
+  const highlightMatch = (text) => {
+    if (!searchQuery) return text;
+    const regex = new RegExp(`(${searchQuery})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} className="bg-yellow-200 text-gray-900">{part}</mark> : part
+    );
+  };
 
-const Slider = ({ label, value, onChange, min, max, unit = "" }) => (
-  <div className="space-y-3">
-    <div className="flex justify-between items-center">
-      <label className="text-xs uppercase tracking-widest text-neutral-500">{label}</label>
-      <span className="text-sm font-mono text-white bg-neutral-800 px-3 py-1 rounded-md">
-        {value}{unit}
-      </span>
+  return (
+    <div className="space-y-2">
+      <label className={`block text-xs uppercase tracking-widest ${t.textLabel}`}>
+        {label}
+      </label>
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`w-full ${t.bgInput} border rounded-lg px-4 py-3 ${t.text} text-sm text-left flex items-center justify-between transition-all duration-300 ${
+            isOpen ? t.borderFocus : `${t.borderInput} hover:${t.borderHover}`
+          }`}
+        >
+          <span>{value}</span>
+          <svg className={`w-4 h-4 ${t.textMuted} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {isOpen && (
+          <div className={`absolute z-50 w-full mt-1 ${t.bgCard} border ${t.border} rounded-lg shadow-xl overflow-hidden`}>
+            {/* Search input */}
+            <div className={`p-2 border-b ${t.border}`}>
+              <div className="relative">
+                <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${t.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className={`w-full pl-9 pr-3 py-2 text-sm ${t.bgInput} border ${t.borderInput} ${t.text} rounded-md focus:outline-none focus:${t.borderFocus}`}
+                />
+              </div>
+            </div>
+            
+            {/* Options list */}
+            <div className="max-h-48 overflow-y-auto">
+              {filteredOptions.length === 0 ? (
+                <div className={`px-4 py-3 text-sm ${t.textMuted} text-center`}>No results found</div>
+              ) : (
+                filteredOptions.map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => { 
+                      onChange(opt); 
+                      setIsOpen(false); 
+                      setSearchQuery('');
+                    }}
+                    className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
+                      value === opt 
+                        ? `${t.bgSection} ${t.text} font-medium` 
+                        : `${t.textSecondary} hover:${t.bgHover}`
+                    }`}
+                  >
+                    {highlightMatch(opt)}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="w-full h-1.5 bg-neutral-800 rounded-full appearance-none cursor-pointer
-                 [&::-webkit-slider-thumb]:appearance-none 
-                 [&::-webkit-slider-thumb]:w-4 
-                 [&::-webkit-slider-thumb]:h-4 
-                 [&::-webkit-slider-thumb]:bg-white 
-                 [&::-webkit-slider-thumb]:rounded-full 
-                 [&::-webkit-slider-thumb]:cursor-pointer
-                 [&::-webkit-slider-thumb]:transition-transform
-                 [&::-webkit-slider-thumb]:hover:scale-110"
-    />
-  </div>
-);
+  );
+};
 
-const PriceChart = ({ predictions, selectedYear, onSelectYear }) => {
+const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark = false }) => {
+  const [isHovering, setIsHovering] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const trackRef = useRef(null);
+  const t = getTheme(isDark);
+  
+  const percent = ((value - min) / (max - min)) * 100;
+  
+  // Format value to avoid floating point display issues
+  const formatVal = (v) => {
+    const decimals = step < 1 ? String(step).split('.')[1]?.length || 1 : 0;
+    return Number(v).toFixed(decimals);
+  };
+  
+  const handleMove = (clientX) => {
+    if (!trackRef.current) return;
+    
+    const rect = trackRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const rawValue = (pct / 100) * (max - min) + min;
+    const snappedValue = Math.round(rawValue / step) * step;
+    // Fix floating point by rounding to step precision
+    const decimals = step < 1 ? String(step).split('.')[1]?.length || 1 : 0;
+    const fixedValue = Number(snappedValue.toFixed(decimals));
+    onChange(Math.max(min, Math.min(max, fixedValue)));
+  };
+  
+  useEffect(() => {
+    const handleMouseMove = (e) => handleMove(e.clientX);
+    const handleMouseUp = () => setIsDragging(false);
+    
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+  
+  const showValue = isHovering || isDragging;
+  
+  return (
+    <div 
+      className="space-y-2"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => {
+        if (!isDragging) setIsHovering(false);
+      }}
+    >
+      <label className={`block text-xs uppercase tracking-widest ${t.textLabel}`}>{label}</label>
+      
+      {/* Value display that moves with handle */}
+      <div className="relative h-6">
+        <div 
+          className={`absolute -translate-x-1/2 transition-all duration-150 ease-out ${
+            showValue ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+          style={{ left: `${percent}%` }}
+        >
+          <span className={`px-2 py-1 ${t.bgTooltip} ${t.text} text-xs font-mono rounded-md whitespace-nowrap`}>
+            {formatVal(value)}{unit}
+          </span>
+        </div>
+      </div>
+      
+      <div className="relative py-2">
+        {/* Invisible larger hit area for easier interaction */}
+        <div 
+          ref={trackRef}
+          className="absolute inset-0 cursor-pointer"
+          style={{ top: '-8px', bottom: '-8px', height: 'calc(100% + 16px)' }}
+          onClick={(e) => handleMove(e.clientX)}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+            handleMove(e.clientX);
+          }}
+        />
+        
+        {/* Visible thin track */}
+        <div className={`relative h-1 ${t.bgTrack} rounded-full pointer-events-none`}>
+          {/* Fill */}
+          <div 
+            className={`absolute h-full ${t.bgFill} rounded-full transition-all duration-150 ease-out`}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        
+        {/* Handle */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-150 ease-out"
+          style={{ left: `${percent}%` }}
+        >
+          {/* Invisible larger hit area for handle */}
+          <div 
+            className="absolute -inset-3 cursor-grab"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+          />
+          
+          {/* Handle circle - small and only visible on hover */}
+          <div
+            className={`w-3 h-3 ${t.bgHandle} rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${
+              isDragging 
+                ? 'opacity-100 scale-110' 
+                : showValue
+                  ? 'opacity-100 scale-100'
+                  : 'opacity-0 scale-75'
+            }`}
+          />
+        </div>
+      </div>
+      
+      {/* Min/Max labels */}
+      <div className={`flex justify-between text-xs ${t.textMuted}`}>
+        <span>{formatVal(min)}{unit}</span>
+        <span>{formatVal(max)}{unit}</span>
+      </div>
+    </div>
+  );
+};
+
+const PriceChart = ({ predictions, selectedYear, onSelectYear, isDark = false }) => {
+  const t = getTheme(isDark);
   const prices = predictions.map(p => p.price);
   const maxPrice = Math.max(...prices);
   const minPrice = Math.min(...prices);
   const range = maxPrice - minPrice || 1;
   
   return (
-    <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-5">
+    <div className={`${t.bgSection} border ${t.border} rounded-xl p-5 transition-colors duration-300`}>
       <div className="flex justify-between items-center mb-4">
-        <span className="text-xs uppercase tracking-widest text-neutral-500">
+        <span className={`text-xs uppercase tracking-widest ${t.textMuted}`}>
           Price Trajectory
         </span>
-        <span className="text-xs text-neutral-600">Click to select year</span>
+        <span className={`text-xs ${t.textMuted}`}>Click to select year</span>
       </div>
       
       <div className="flex items-end justify-between h-32 gap-3">
@@ -162,18 +384,18 @@ const PriceChart = ({ predictions, selectedYear, onSelectYear }) => {
               onClick={() => onSelectYear(p.year)}
               className="flex-1 flex flex-col items-center gap-2 group cursor-pointer"
             >
-              <span className={`text-xs font-mono transition-colors ${isSelected ? 'text-white' : 'text-neutral-600 group-hover:text-neutral-400'}`}>
+              <span className={`text-xs font-mono transition-colors ${isSelected ? t.text : `${t.textMuted} group-hover:${t.textSecondary}`}`}>
                 ${(p.price / 1000).toFixed(0)}K
               </span>
               <div 
                 className={`w-full rounded-t transition-all duration-300 ${
                   isSelected 
-                    ? 'bg-white' 
-                    : 'bg-neutral-700 group-hover:bg-neutral-600'
+                    ? t.barSelected 
+                    : `${t.barUnselected} ${t.barHover}`
                 }`}
                 style={{ height: `${heightPercent}%` }}
               />
-              <span className={`text-xs transition-colors ${isSelected ? 'text-white font-medium' : 'text-neutral-600 group-hover:text-neutral-400'}`}>
+              <span className={`text-xs transition-colors ${isSelected ? `${t.text} font-medium` : `${t.textMuted} group-hover:${t.textSecondary}`}`}>
                 {p.year}
               </span>
             </button>
@@ -185,7 +407,8 @@ const PriceChart = ({ predictions, selectedYear, onSelectYear }) => {
 };
 
 // ============== MAIN APP ==============
-export default function App() {
+export default function HDBPrediction({ isDark = false }) {
+  const t = getTheme(isDark);
   const [form, setForm] = useState({
     town: "BEDOK",
     flatType: "4 ROOM",
@@ -234,7 +457,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className={`${t.text} transition-colors duration-300`}>
       {/* Main */}
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="grid lg:grid-cols-2 gap-12">
@@ -242,10 +465,10 @@ export default function App() {
           {/* Left: Form */}
           <div className="space-y-6">
             <div className="mb-8">
-              <h1 className="text-3xl font-light tracking-tight mb-2">
+              <h1 className={`text-3xl font-light tracking-tight mb-2 ${t.text}`}>
                 Market Price Prediction
               </h1>
-              <p className="text-neutral-500 text-sm">
+              <p className={`${t.textMuted} text-sm`}>
                 Predict average resale prices for a flat segment
               </p>
             </div>
@@ -254,7 +477,8 @@ export default function App() {
               label="Town" 
               value={form.town} 
               onChange={v => setForm({...form, town: v})} 
-              options={HDB_TOWNS} 
+              options={HDB_TOWNS}
+              isDark={isDark}
             />
             
             <div className="grid grid-cols-2 gap-4">
@@ -262,13 +486,15 @@ export default function App() {
                 label="Flat Type" 
                 value={form.flatType} 
                 onChange={v => setForm({...form, flatType: v})} 
-                options={FLAT_TYPES} 
+                options={FLAT_TYPES}
+                isDark={isDark}
               />
               <Select 
                 label="Flat Model" 
                 value={form.flatModel} 
                 onChange={v => setForm({...form, flatModel: v})} 
-                options={FLAT_MODELS} 
+                options={FLAT_MODELS}
+                isDark={isDark}
               />
             </div>
             
@@ -276,7 +502,8 @@ export default function App() {
               label="Storey Range" 
               value={form.storey} 
               onChange={v => setForm({...form, storey: v})} 
-              options={STOREY_RANGES} 
+              options={STOREY_RANGES}
+              isDark={isDark}
             />
             
             <Slider 
@@ -285,7 +512,8 @@ export default function App() {
               onChange={v => setForm({...form, floorArea: v})} 
               min={35} 
               max={200} 
-              unit=" sqm" 
+              unit=" sqm"
+              isDark={isDark}
             />
             
             <Slider 
@@ -293,14 +521,14 @@ export default function App() {
               value={form.leaseYear} 
               onChange={v => setForm({...form, leaseYear: v})} 
               min={1966} 
-              max={2024} 
+              max={2024}
+              isDark={isDark}
             />
             
             <button
               onClick={handlePredict}
               disabled={isLoading}
-              className="w-full py-4 bg-white text-black rounded-lg font-medium
-                       hover:bg-neutral-200 transition-colors disabled:opacity-50"
+              className={`w-full py-4 ${t.btnPrimary} rounded-lg font-medium transition-colors duration-300 disabled:opacity-50`}
             >
               {isLoading ? "Predicting..." : "Predict Market Price"}
             </button>
@@ -309,14 +537,14 @@ export default function App() {
           {/* Right: Results */}
           <div>
             {!showResults ? (
-              <div className="h-full min-h-[400px] flex items-center justify-center border border-dashed border-neutral-800 rounded-xl">
+              <div className={`h-full min-h-[400px] flex items-center justify-center border border-dashed ${t.borderDashed} rounded-xl transition-colors duration-300`}>
                 <div className="text-center px-6">
-                  <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-neutral-900 flex items-center justify-center">
-                    <svg className="w-7 h-7 text-neutral-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className={`w-14 h-14 mx-auto mb-4 rounded-xl ${t.bgEmpty} flex items-center justify-center transition-colors duration-300`}>
+                    <svg className={`w-7 h-7 ${t.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
-                  <p className="text-neutral-500 text-sm">
+                  <p className={`${t.textMuted} text-sm`}>
                     Configure flat criteria and predict
                   </p>
                 </div>
@@ -325,77 +553,75 @@ export default function App() {
               <div className="space-y-5">
                 
                 {/* Main Price Card */}
-                <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+                <div className={`${t.bgCard} border ${t.border} rounded-xl p-6 ${isDark ? '' : 'shadow-sm'} transition-colors duration-300`}>
                   <div className="flex items-start justify-between mb-1">
-                    <span className="text-xs uppercase tracking-widest text-neutral-500">
+                    <span className={`text-xs uppercase tracking-widest ${t.textMuted}`}>
                       Predicted Market Price • {selectedYear}
                     </span>
                     {priceChange && (
                       <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                        parseFloat(priceChange) >= 0 
-                          ? 'bg-emerald-500/20 text-emerald-400' 
-                          : 'bg-red-500/20 text-red-400'
+                        parseFloat(priceChange) >= 0 ? t.success : t.error
                       }`}>
                         {parseFloat(priceChange) >= 0 ? '+' : ''}{priceChange}% from 2025
                       </span>
                     )}
                   </div>
                   
-                  <p className="text-4xl font-mono font-light text-white mb-4">
+                  <p className={`text-4xl font-mono font-light ${t.text} mb-4`}>
                     ${selectedPrediction?.price.toLocaleString()}
                   </p>
                   
                   <div className="flex gap-6 text-sm">
                     <div>
-                      <span className="text-neutral-600">Range: </span>
-                      <span className="font-mono text-neutral-400">
+                      <span className={t.textMuted}>Range: </span>
+                      <span className={`font-mono ${t.textSecondary}`}>
                         ${selectedPrediction?.lower.toLocaleString()} – ${selectedPrediction?.upper.toLocaleString()}
                       </span>
                     </div>
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t border-neutral-800">
-                    <p className="text-xs text-neutral-600">
-                      Average price for <span className="text-neutral-400">{submittedForm?.flatType}</span> flats 
-                      in <span className="text-neutral-400">{submittedForm?.town}</span> with 
-                      ~<span className="text-neutral-400">{selectedPrediction?.remainingLease} years</span> lease 
-                      remaining in <span className="text-neutral-400">{selectedYear}</span>
+                  <div className={`mt-4 pt-4 border-t ${t.border}`}>
+                    <p className={`text-xs ${t.textMuted}`}>
+                      Average price for <span className={t.textSecondary}>{submittedForm?.flatType}</span> flats 
+                      in <span className={t.textSecondary}>{submittedForm?.town}</span> with 
+                      ~<span className={t.textSecondary}>{selectedPrediction?.remainingLease} years</span> lease 
+                      remaining in <span className={t.textSecondary}>{selectedYear}</span>
                     </p>
                   </div>
                 </div>
 
                 {/* Price Trajectory - Interactive: Click bars to select year */}
-                {predictions && <PriceChart predictions={predictions} selectedYear={selectedYear} onSelectYear={setSelectedYear} />}
+                {predictions && <PriceChart predictions={predictions} selectedYear={selectedYear} onSelectYear={setSelectedYear} isDark={isDark} />}
 
                 {/* Input Summary - Show the criteria that was used for prediction */}
-                <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4">
-                  <p className="text-xs uppercase tracking-widest text-neutral-600 mb-3">
-                    Prediction Criteria
+                <div className={`${t.bgSection} border ${t.border} rounded-xl p-4 transition-colors duration-300`}>
+                  <p className={`text-xs uppercase tracking-widest ${t.textMuted} mb-3`}>
+                    Used Prediction Criteria
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 font-mono">
+                    <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} font-mono`}>
                       {submittedForm?.town}
                     </span>
-                    <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 font-mono">
+                    <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} font-mono`}>
                       {submittedForm?.flatType}
                     </span>
-                    <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 font-mono">
+                    <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} font-mono`}>
                       {submittedForm?.flatModel}
                     </span>
-                    <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 font-mono">
+                    <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} font-mono`}>
                       {submittedForm?.storey}
                     </span>
-                    <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 font-mono">
+                    <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} font-mono`}>
                       {submittedForm?.floorArea} sqm
                     </span>
-                    <span className="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 font-mono">
+                    <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} font-mono`}>
                       Lease from {submittedForm?.leaseYear}
                     </span>
                   </div>
                 </div>
                 
                 {/* Disclaimer */}
-                <p className="text-xs text-neutral-700 text-center">
+                <p className={`text-xs ${t.textMuted} text-center`}>
                   Predictions based on historical trends. Actual prices may vary.
                 </p>
               </div>
@@ -405,8 +631,8 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-neutral-900 mt-10">
-        <div className="max-w-5xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-3 text-xs text-neutral-600">
+      <footer className={`border-t ${t.border} mt-10 transition-colors duration-300`}>
+        <div className={`max-w-5xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-3 text-xs ${t.textMuted}`}>
           <span>Trained on 217K+ HDB transactions (2017–2025)</span>
           <span>Data Minions • SUTD Production Ready ML</span>
         </div>

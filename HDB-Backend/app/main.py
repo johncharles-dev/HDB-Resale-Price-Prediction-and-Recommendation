@@ -126,7 +126,7 @@ def load_amenity_data():
             df = pd.read_csv(filepath)
             return df[['latitude', 'longitude']].values
         else:
-            print(f"  ⚠️ File not found: {filename}")
+            print(f"  |!| File not found: {filename}")
             return np.array([])
     
     return {
@@ -156,7 +156,7 @@ async def load_resources():
         model = joblib.load(MODEL_PATH)
         print(f"✓ XGBoost model loaded: {MODEL_PATH}")
     except Exception as e:
-        print(f"❌ Error loading model: {e}")
+        print(f"X Error loading model: {e}")
         raise e
     
     # Load trend multipliers (Prophet)
@@ -166,7 +166,7 @@ async def load_resources():
         print(f"✓ Trend multipliers loaded: {len(trend_multipliers)} years")
         print(f"  Years: {list(trend_multipliers.keys())}")
     except Exception as e:
-        print(f"❌ Error loading trend multipliers: {e}")
+        print(f"X Error loading trend multipliers: {e}")
         raise e
     
     # Load feature config (optional)
@@ -176,14 +176,14 @@ async def load_resources():
                 model_features = json.load(f)
             print(f"✓ Feature config loaded")
     except Exception as e:
-        print(f"⚠️ Feature config not loaded: {e}")
+        print(f"|!| Feature config not loaded: {e}")
     
     # Load mappings
     try:
         mappings = load_mappings()
         print(f"✓ Mappings loaded: {len(mappings['town'])} towns")
     except Exception as e:
-        print(f"❌ Error loading mappings: {e}")
+        print(f"X Error loading mappings: {e}")
         raise e
     
     # Load amenity data
@@ -191,7 +191,7 @@ async def load_resources():
         amenity_data = load_amenity_data()
         print(f"✓ Amenities loaded")
     except Exception as e:
-        print(f"❌ Error loading amenities: {e}")
+        print(f"X Error loading amenities: {e}")
         raise e
     
     print("=" * 60)
@@ -393,7 +393,7 @@ async def predict(request: PredictionRequest):
         )
         
     except Exception as e:
-        print(f"❌ Prediction error: {e}")
+        print(f"X Prediction error: {e}")
         import traceback
         traceback.print_exc()
         return PredictionResponse(success=False, error=f"Prediction failed: {str(e)}")
@@ -509,7 +509,7 @@ async def predict_multi_year(request: MultiYearPredictionRequest):
         )
         
     except Exception as e:
-        print(f"❌ Multi-year prediction error: {e}")
+        print(f"X Multi-year prediction error: {e}")
         import traceback
         traceback.print_exc()
         return MultiYearPredictionResponse(success=False, error=f"Prediction failed: {str(e)}")

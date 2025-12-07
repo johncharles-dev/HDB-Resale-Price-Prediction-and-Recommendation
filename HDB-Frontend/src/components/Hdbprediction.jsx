@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+// ============== API CONFIG ==============
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 // Theme helper - generates class names based on isDark prop
 const getTheme = (isDark) => ({
   bg: isDark ? 'bg-black' : 'bg-gray-50',
@@ -44,9 +47,9 @@ const HDB_TOWNS = [
 const FLAT_TYPES = ["2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM", "EXECUTIVE"];
 
 const FLAT_MODELS = [
-  "Improved", "New Generation", "Model A", "Standard", "Simplified",
-  "Premium Apartment", "Maisonette", "Apartment", "DBSS", "Model A2",
-  "Premium Apartment Loft", "3Gen"
+  "Apartment", "DBSS", "Improved", "Maisonette", "Model A", 
+  "Model A2", "New Generation", "OTHER", "Premium Apartment", 
+  "Simplified", "Standard"
 ];
 
 const STOREY_RANGES = [
@@ -55,72 +58,289 @@ const STOREY_RANGES = [
   "31 TO 33", "34 TO 36", "37 TO 39", "40 TO 42", "43 TO 45"
 ];
 
-const PREDICTION_YEARS = [2025, 2026, 2027, 2028];
+const PREDICTION_YEARS = [2025, 2026, 2027, 2028, 2029];
 
-// ============== PREDICTION LOGIC ==============
-const predictMarketPrice = (features, year) => {
-  // Base prices by flat type (2025 market baseline)
-  const basePrices = {
-    "2 ROOM": 320000,
-    "3 ROOM": 420000,
-    "4 ROOM": 550000,
-    "5 ROOM": 680000,
-    "EXECUTIVE": 780000
+// ============== TOWN DETECTION FROM ADDRESS ==============
+const detectTownFromAddress = (address) => {
+  const addressUpper = address.toUpperCase();
+  
+  // Map of keywords to towns
+  const townKeywords = {
+    'ANG MO KIO': ['ANG MO KIO', 'AMK'],
+    'BEDOK': ['BEDOK'],
+    'BISHAN': ['BISHAN'],
+    'BUKIT BATOK': ['BUKIT BATOK', 'BT BATOK'],
+    'BUKIT MERAH': ['BUKIT MERAH', 'BT MERAH', 'DEPOT', 'TELOK BLANGAH', 'REDHILL', 'TIONG BAHRU'],
+    'BUKIT PANJANG': ['BUKIT PANJANG', 'BT PANJANG'],
+    'BUKIT TIMAH': ['BUKIT TIMAH', 'BT TIMAH'],
+    'CENTRAL AREA': ['CENTRAL', 'TANJONG PAGAR', 'CHINATOWN', 'OUTRAM'],
+    'CHOA CHU KANG': ['CHOA CHU KANG', 'CCK'],
+    'CLEMENTI': ['CLEMENTI'],
+    'GEYLANG': ['GEYLANG', 'ALJUNIED', 'MACPHERSON'],
+    'HOUGANG': ['HOUGANG'],
+    'JURONG EAST': ['JURONG EAST'],
+    'JURONG WEST': ['JURONG WEST'],
+    'KALLANG/WHAMPOA': ['KALLANG', 'WHAMPOA', 'BOON KENG', 'BENDEMEER'],
+    'MARINE PARADE': ['MARINE PARADE', 'MARINE CRS', 'MARINE DR'],
+    'PASIR RIS': ['PASIR RIS'],
+    'PUNGGOL': ['PUNGGOL'],
+    'QUEENSTOWN': ['QUEENSTOWN', 'COMMONWEALTH', 'TANGLIN HALT', 'GHIM MOH'],
+    'SEMBAWANG': ['SEMBAWANG'],
+    'SENGKANG': ['SENGKANG'],
+    'SERANGOON': ['SERANGOON'],
+    'TAMPINES': ['TAMPINES'],
+    'TOA PAYOH': ['TOA PAYOH'],
+    'WOODLANDS': ['WOODLANDS'],
+    'YISHUN': ['YISHUN']
   };
   
-  // Town location premiums
-  const townMult = {
-    "CENTRAL AREA": 1.55, "BUKIT TIMAH": 1.50, "QUEENSTOWN": 1.40,
-    "BISHAN": 1.35, "TOA PAYOH": 1.28, "KALLANG/WHAMPOA": 1.25,
-    "MARINE PARADE": 1.25, "CLEMENTI": 1.20, "BUKIT MERAH": 1.18,
-    "ANG MO KIO": 1.15, "SERANGOON": 1.12, "GEYLANG": 1.10,
-    "BEDOK": 1.08, "TAMPINES": 1.08, "HOUGANG": 1.02,
-    "PASIR RIS": 1.00, "PUNGGOL": 1.02, "SENGKANG": 0.98,
-    "BUKIT BATOK": 0.98, "BUKIT PANJANG": 0.95, "CHOA CHU KANG": 0.95,
-    "JURONG EAST": 1.00, "JURONG WEST": 0.95, "SEMBAWANG": 0.90,
-    "WOODLANDS": 0.92, "YISHUN": 0.95
-  };
+  for (const [town, keywords] of Object.entries(townKeywords)) {
+    for (const keyword of keywords) {
+      if (addressUpper.includes(keyword)) {
+        return town;
+      }
+    }
+  }
   
-  // Flat model adjustments
-  const modelMult = {
-    "DBSS": 1.12, "Premium Apartment": 1.08, "Premium Apartment Loft": 1.15,
-    "Maisonette": 1.05, "Model A": 1.02, "Improved": 1.00,
-    "New Generation": 0.98, "Standard": 0.95, "Simplified": 0.92,
-    "Apartment": 1.00, "Model A2": 1.00, "3Gen": 1.10
-  };
-  
-  const base = basePrices[features.flatType] || 550000;
-  const town = townMult[features.town] || 1.0;
-  const model = modelMult[features.flatModel] || 1.0;
-  
-  // Floor area adjustment (baseline ~95 sqm for 4-room)
-  const areaMult = features.floorArea / 95;
-  
-  // Storey premium
-  const storeyNum = parseInt(features.storey.split(" ")[0]);
-  const storeyMult = 1 + (storeyNum - 7) * 0.015;
-  
-  // Lease depreciation (remaining lease at prediction year)
-  const remainingLease = 99 - (year - features.leaseYear);
-  const leaseMult = remainingLease >= 70 ? 1.0 : 
-                    remainingLease >= 50 ? 0.85 + (remainingLease - 50) * 0.0075 :
-                    0.60 + (remainingLease / 50) * 0.25;
-  
-  // Market appreciation (~3.5% annually)
-  const yearMult = Math.pow(1.035, year - 2025);
-  
-  // Calculate price
-  const price = Math.round(base * town * model * areaMult * storeyMult * leaseMult * yearMult / 1000) * 1000;
-  
-  return {
-    price,
-    lower: Math.round(price * 0.94 / 1000) * 1000,
-    upper: Math.round(price * 1.06 / 1000) * 1000,
-    remainingLease
-  };
+  return null; // No match found
 };
 
-// ============== COMPONENTS ==============
+// ============== ADDRESS SEARCH COMPONENT ==============
+const AddressSearch = ({ label, value, onChange, onSelect, isDark = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(value || '');
+  const [suggestions, setSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const debounceRef = useRef(null);
+  const t = getTheme(isDark);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // Search OneMap API
+  const searchOneMap = async (query) => {
+    if (!query || query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // OneMap API
+      const response = await fetch(
+        `https://www.onemap.gov.sg/api/common/elastic/search?searchVal=${encodeURIComponent(query)}&returnGeom=Y&getAddrDetails=Y&pageNum=1`
+      );
+      const data = await response.json();
+
+      if (data.found > 0) {
+        // Filter for HDB addresses (typically have BLK or block numbers)
+        const hdbResults = data.results
+          .filter(r => r.ADDRESS && (r.ADDRESS.includes('BLK') || /^\d+[A-Z]?\s/.test(r.ADDRESS)))
+          .slice(0, 8)
+          .map(r => ({
+            address: r.ADDRESS,
+            block: r.BLK_NO || extractBlock(r.ADDRESS),
+            street: r.ROAD_NAME || extractStreet(r.ADDRESS),
+            latitude: parseFloat(r.LATITUDE),
+            longitude: parseFloat(r.LONGITUDE),
+            postal: r.POSTAL,
+            source: 'onemap'
+          }));
+
+        if (hdbResults.length > 0) {
+          setSuggestions(hdbResults);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Fallback to OpenStreetMap Nominatim
+      await searchOpenStreetMap(query);
+    } catch (error) {
+      console.error('OneMap search error:', error);
+      // Fallback to OpenStreetMap
+      await searchOpenStreetMap(query);
+    }
+  };
+
+  // Fallback: OpenStreetMap Nominatim
+  const searchOpenStreetMap = async (query) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ' Singapore')}&format=json&addressdetails=1&limit=5`
+      );
+      const data = await response.json();
+
+      const results = data
+        .filter(r => r.address)
+        .map(r => ({
+          address: r.display_name.split(',').slice(0, 3).join(', '),
+          block: r.address.house_number || '',
+          street: r.address.road || r.address.suburb || '',
+          latitude: parseFloat(r.lat),
+          longitude: parseFloat(r.lon),
+          postal: r.address.postcode || '',
+          source: 'openstreetmap'
+        }));
+
+      setSuggestions(results);
+    } catch (error) {
+      console.error('OpenStreetMap search error:', error);
+      setSuggestions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Extract block from address string
+  const extractBlock = (address) => {
+    const match = address.match(/^(\d+[A-Z]?)\s/);
+    return match ? match[1] : '';
+  };
+
+  // Extract street from address string
+  const extractStreet = (address) => {
+    const parts = address.split(' ');
+    if (parts.length > 1) {
+      // Remove block number and postal code
+      return parts.slice(1).filter(p => !/^\d{6}$/.test(p)).join(' ');
+    }
+    return address;
+  };
+
+  // Debounced search
+  const handleInputChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    onChange(query);
+    setIsOpen(true);
+
+    // Clear previous timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Debounce API call
+    debounceRef.current = setTimeout(() => {
+      searchOneMap(query);
+    }, 300);
+  };
+
+  // Handle selection
+  const handleSelect = (suggestion) => {
+    setSearchQuery(suggestion.address);
+    setSelectedAddress(suggestion);
+    onChange(suggestion.address);
+    onSelect(suggestion);
+    setIsOpen(false);
+    setSuggestions([]);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className={`block text-xs uppercase tracking-widest ${t.textLabel}`}>
+        {label}
+      </label>
+      <div className="relative" ref={dropdownRef}>
+        <div className="relative">
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={handleInputChange}
+            onFocus={() => setIsOpen(true)}
+            placeholder="Type block & street (e.g., 112A Depot Road)"
+            className={`w-full ${t.bgInput} border rounded-lg px-4 py-3 pr-10 ${t.text} text-sm transition-all duration-300 ${
+              isOpen ? t.borderFocus : `${t.borderInput} hover:${t.borderHover}`
+            }`}
+          />
+          {/* Search/Loading Icon */}
+          <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${t.textMuted}`}>
+            {isLoading ? (
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            )}
+          </div>
+        </div>
+
+        {/* Dropdown Suggestions */}
+        {isOpen && suggestions.length > 0 && (
+          <div className={`absolute z-50 w-full mt-1 ${t.bgCard} border ${t.border} rounded-lg shadow-xl max-h-60 overflow-y-auto`}>
+            {suggestions.map((suggestion, index) => {
+              const detectedTown = detectTownFromAddress(suggestion.address);
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleSelect(suggestion)}
+                  className={`w-full px-4 py-3 text-left text-sm transition-colors hover:${t.bgHover} border-b ${t.border} last:border-b-0`}
+                >
+                  <div className={`font-medium ${t.text}`}>{suggestion.address}</div>
+                  <div className={`text-xs ${t.textMuted} mt-0.5 flex items-center gap-2`}>
+                    <span>Block: {suggestion.block || 'N/A'}</span>
+                    <span>•</span>
+                    <span>Street: {suggestion.street || 'N/A'}</span>
+                    {detectedTown && (
+                      <>
+                        <span>•</span>
+                        <span className="text-emerald-500">Town: {detectedTown}</span>
+                      </>
+                    )}
+                    {suggestion.source === 'openstreetmap' && (
+                      <>
+                        <span>•</span>
+                        <span className="text-yellow-500">via OpenStreetMap</span>
+                      </>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* No results message */}
+        {isOpen && searchQuery.length >= 2 && !isLoading && suggestions.length === 0 && (
+          <div className={`absolute z-50 w-full mt-1 ${t.bgCard} border ${t.border} rounded-lg shadow-xl p-4`}>
+            <p className={`text-sm ${t.textMuted}`}>No addresses found. Try a different search.</p>
+          </div>
+        )}
+
+        {/* Selected address confirmation */}
+        {selectedAddress && !isOpen && (
+          <div className={`mt-2 p-2 rounded-lg ${t.bgSection} border ${t.border}`}>
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span className={`text-xs ${t.textSecondary}`}>
+                📍 Lat: {selectedAddress.latitude?.toFixed(4)}, Lng: {selectedAddress.longitude?.toFixed(4)}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============== OTHER COMPONENTS ==============
 const Select = ({ label, value, onChange, options, isDark = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -181,46 +401,39 @@ const Select = ({ label, value, onChange, options, isDark = false }) => {
         </button>
         
         {isOpen && (
-          <div className={`absolute z-50 w-full mt-1 ${t.bgCard} border ${t.border} rounded-lg shadow-xl overflow-hidden`}>
-            {/* Search input */}
+          <div className={`absolute z-50 w-full mt-1 ${t.bgCard} border ${t.border} rounded-lg shadow-xl max-h-60 overflow-hidden`}>
+            {/* Search Input */}
             <div className={`p-2 border-b ${t.border}`}>
-              <div className="relative">
-                <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${t.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
-                  className={`w-full pl-9 pr-3 py-2 text-sm ${t.bgInput} border ${t.borderInput} ${t.text} rounded-md focus:outline-none focus:${t.borderFocus}`}
-                />
-              </div>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className={`w-full px-3 py-2 ${t.bgInput} border ${t.borderInput} rounded-md text-sm ${t.text} focus:outline-none focus:${t.borderFocus}`}
+              />
             </div>
             
-            {/* Options list */}
-            <div className="max-h-48 overflow-y-auto">
-              {filteredOptions.length === 0 ? (
-                <div className={`px-4 py-3 text-sm ${t.textMuted} text-center`}>No results found</div>
-              ) : (
+            {/* Options List */}
+            <div className="overflow-y-auto max-h-44">
+              {filteredOptions.length > 0 ? (
                 filteredOptions.map(opt => (
                   <button
                     key={opt}
-                    onClick={() => { 
-                      onChange(opt); 
-                      setIsOpen(false); 
-                      setSearchQuery('');
-                    }}
+                    onClick={() => { onChange(opt); setIsOpen(false); setSearchQuery(''); }}
                     className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
                       value === opt 
-                        ? `${t.bgSection} ${t.text} font-medium` 
-                        : `${t.textSecondary} hover:${t.bgHover}`
+                        ? `${t.bgHover} ${t.text} font-medium` 
+                        : `${t.text} hover:${t.bgHover}`
                     }`}
                   >
                     {highlightMatch(opt)}
                   </button>
                 ))
+              ) : (
+                <div className={`px-4 py-3 text-sm ${t.textMuted}`}>
+                  No results found
+                </div>
               )}
             </div>
           </div>
@@ -349,7 +562,7 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark 
       </div>
       
       {/* Min/Max labels */}
-      <div className={`flex justify-between text-xs ${t.textMuted}`}>
+      <div className={`flex justify-between text-xs ${t.textSecondary}`}>
         <span>{formatVal(min)}{unit}</span>
         <span>{formatVal(max)}{unit}</span>
       </div>
@@ -359,44 +572,46 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark 
 
 const PriceChart = ({ predictions, selectedYear, onSelectYear, isDark = false }) => {
   const t = getTheme(isDark);
-  const prices = predictions.map(p => p.price);
-  const maxPrice = Math.max(...prices);
-  const minPrice = Math.min(...prices);
-  const range = maxPrice - minPrice || 1;
+  const maxPrice = Math.max(...predictions.map(p => p.price));
   
   return (
-    <div className={`${t.bgSection} border ${t.border} rounded-xl p-5 transition-colors duration-300`}>
-      <div className="flex justify-between items-center mb-4">
-        <span className={`text-xs uppercase tracking-widest ${t.textMuted}`}>
-          Price Trajectory
-        </span>
-        <span className={`text-xs ${t.textMuted}`}>Click to select year</span>
-      </div>
-      
-      <div className="flex items-end justify-between h-32 gap-3">
-        {predictions.map(p => {
-          const heightPercent = ((p.price - minPrice) / range) * 60 + 40;
-          const isSelected = p.year === selectedYear;
+    <div className={`${t.bgCard} border ${t.border} rounded-xl p-5 ${isDark ? '' : 'shadow-sm'} transition-colors duration-300`}>
+      <p className={`text-xs uppercase tracking-widest ${t.textMuted} mb-4`}>
+        Price Trajectory • Click to Select Year
+      </p>
+      <div className="flex items-end justify-between gap-3 h-32">
+        {predictions.map(pred => {
+          const isSelected = pred.year === selectedYear;
+          const barHeight = (pred.price / maxPrice) * 100;
           
           return (
             <button
-              key={p.year}
-              onClick={() => onSelectYear(p.year)}
-              className="flex-1 flex flex-col items-center gap-2 group cursor-pointer"
+              key={pred.year}
+              onClick={() => onSelectYear(pred.year)}
+              className={`group flex-1 flex flex-col items-center gap-2 transition-all duration-200 ${
+                isSelected ? 'scale-105' : 'hover:scale-102'
+              }`}
             >
-              <span className={`text-xs font-mono transition-colors ${isSelected ? t.text : `${t.textMuted} group-hover:${t.textSecondary}`}`}>
-                ${(p.price / 1000).toFixed(0)}K
+              {/* Price label on hover/select */}
+              <span className={`text-xs font-mono transition-opacity duration-200 ${
+                isSelected ? `${t.text} opacity-100` : `${t.textMuted} opacity-0 group-hover:opacity-100`
+              }`}>
+                ${pred.price.toLocaleString()}
               </span>
+              
+              {/* Bar */}
               <div 
-                className={`w-full rounded-t transition-all duration-300 ${
+                className={`w-full rounded-t-md transition-all duration-300 ${
                   isSelected 
-                    ? t.barSelected 
+                    ? `${t.barSelected} ring-2 ring-offset-2 ${isDark ? 'ring-white ring-offset-neutral-900' : 'ring-gray-900 ring-offset-white'}` 
                     : `${t.barUnselected} ${t.barHover}`
                 }`}
-                style={{ height: `${heightPercent}%` }}
-              />
-              <span className={`text-xs transition-colors ${isSelected ? `${t.text} font-medium` : `${t.textMuted} group-hover:${t.textSecondary}`}`}>
-                {p.year}
+                style={{ height: `${barHeight}%`, minHeight: '20px' }}
+              ></div>
+              
+              {/* Year label */}
+              <span className={`text-xs ${isSelected ? t.text : t.textMuted} font-medium`}>
+                {pred.year}
               </span>
             </button>
           );
@@ -406,72 +621,170 @@ const PriceChart = ({ predictions, selectedYear, onSelectYear, isDark = false })
   );
 };
 
-// ============== MAIN APP ==============
+// ============== MAIN COMPONENT ==============
 export default function HDBPrediction({ isDark = false }) {
   const t = getTheme(isDark);
+  
+  // Form state - Updated for Try 2
   const [form, setForm] = useState({
-    town: "BEDOK",
-    flatType: "4 ROOM",
-    flatModel: "Improved",
-    storey: "07 TO 09",
-    floorArea: 95,
-    leaseYear: 1995
+    address: '',
+    block: '',
+    street: '',
+    latitude: null,
+    longitude: null,
+    town: HDB_TOWNS[0],
+    flatType: FLAT_TYPES[2],
+    flatModel: FLAT_MODELS[2],
+    storey: STOREY_RANGES[3],
+    floorArea: 90,
+    leaseYear: 2000
   });
-  
-  const [selectedYear, setSelectedYear] = useState(2025);
-  const [showResults, setShowResults] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Store predictions in state - only updates on button click
+
+  // Prediction states
   const [predictions, setPredictions] = useState(null);
-  // Store the form values that were used for prediction
+  const [selectedYear, setSelectedYear] = useState(2025);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showResults, setShowResults] = useState(false);
   const [submittedForm, setSubmittedForm] = useState(null);
   
-  // Derived from stored predictions (not from form)
-  const selectedPrediction = predictions?.find(p => p.year === selectedYear);
-  const basePrice = predictions?.[0]?.price;
-  const priceChange = predictions && selectedYear > 2025 
-    ? ((selectedPrediction.price - basePrice) / basePrice * 100).toFixed(1)
-    : null;
+  // NEW: Toggle state for showing breakdown
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
-  const handlePredict = async () => {
-    setIsLoading(true);
+  // Handle address selection
+  const handleAddressSelect = (suggestion) => {
+    // Auto-detect town from address
+    const detectedTown = detectTownFromAddress(suggestion.address);
     
-    // Store the form values being submitted
-    const currentForm = { ...form };
-    
-    // Simulate API call to backend
-    await new Promise(r => setTimeout(r, 800));
-    
-    // In real app: const response = await fetch('/api/predict', { method: 'POST', body: JSON.stringify(form) })
-    // For now, calculate locally (this would come from backend)
-    const results = PREDICTION_YEARS.map(year => ({
-      year,
-      ...predictMarketPrice(currentForm, year)
+    setForm(prev => ({
+      ...prev,
+      address: suggestion.address,
+      block: suggestion.block,
+      street: suggestion.street,
+      latitude: suggestion.latitude,
+      longitude: suggestion.longitude,
+      // Auto-update town if detected
+      ...(detectedTown && { town: detectedTown })
     }));
-    
-    setPredictions(results);
-    setSubmittedForm(currentForm);
-    setShowResults(true);
-    setIsLoading(false);
   };
 
+  // Extract floor level from storey range (e.g., "10 TO 12" -> 10)
+  const getFloorLevel = (storey) => {
+    const match = storey.match(/^(\d+)/);
+    return match ? parseInt(match[1]) : 1;
+  };
+
+  // Handle prediction
+  const handlePredict = async () => {
+    // Validate address is selected
+    if (!form.latitude || !form.longitude) {
+      setError('Please select a valid address from the dropdown');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      
+      // Single API call with all years
+      const requestBody = {
+        block: form.block,
+        street: form.street,
+        town: form.town,
+        flat_type: form.flatType,
+        flat_model: form.flatModel,
+        floor_area_sqm: form.floorArea,
+        lease_commence_year: form.leaseYear,
+        floor_level: getFloorLevel(form.storey),
+        years: PREDICTION_YEARS,  // [2025, 2026, 2027, 2028, 2029]
+        month: currentMonth,
+        latitude: form.latitude,
+        longitude: form.longitude
+      };
+
+      const response = await fetch(`${API_URL}/predict/multi-year`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || 'Prediction failed');
+      }
+
+      if (data.success === false) {
+        throw new Error(data.error || 'Prediction failed');
+      }
+      
+      // Transform response - UPDATED FOR HYBRID MODEL
+      const allPredictions = data.predictions.map(p => ({
+        year: p.year,
+        price: Math.round(p.predicted_price),
+        lower: Math.round(p.predicted_price * 0.95),
+        upper: Math.round(p.predicted_price * 1.05),
+        remainingLease: p.remaining_lease,
+        // NEW: Hybrid model data
+        basePrice: p.base_price ? Math.round(p.base_price) : null,
+        trendMultiplier: p.trend_multiplier || null
+      }));
+
+      setPredictions(allPredictions);
+      setSelectedYear(2025);
+      setSubmittedForm({...form});
+      setShowResults(true);
+      
+    } catch (err) {
+      console.error('Prediction error:', err);
+      let errorMessage = 'Failed to get prediction. Please try again.';
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err.detail) {
+        errorMessage = err.detail;
+      }
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get selected prediction data
+  const selectedPrediction = predictions?.find(p => p.year === selectedYear);
+  
+  // Calculate price change from base year
+  const priceChange = predictions && selectedYear !== 2025
+    ? (((selectedPrediction?.price - predictions[0].price) / predictions[0].price) * 100).toFixed(1)
+    : null;
+
   return (
-    <div className={`${t.text} transition-colors duration-300`}>
-      {/* Main */}
+    <div className={`min-h-screen ${t.bg} transition-colors duration-300`}>
       <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="grid lg:grid-cols-2 gap-12">
+        <div className="grid lg:grid-cols-2 gap-8">
           
-          {/* Left: Form */}
-          <div className="space-y-6">
-            <div className="mb-8">
-              <h1 className={`text-3xl font-light tracking-tight mb-2 ${t.text}`}>
-                Market Price Prediction
+          {/* Left: Input Form */}
+          <div className="space-y-5">
+            <div>
+              <h1 className={`text-2xl font-semibold ${t.text} mb-1`}>
+                HDB Price Prediction
               </h1>
               <p className={`${t.textMuted} text-sm`}>
-                Predict average resale prices for a flat segment
+                Get accurate price predictions based on specific HDB address
               </p>
             </div>
+
+            {/* NEW: Address Search */}
+            <AddressSearch
+              label="Block & Street Address"
+              value={form.address}
+              onChange={(v) => setForm({...form, address: v})}
+              onSelect={handleAddressSelect}
+              isDark={isDark}
+            />
             
             <Select 
               label="Town" 
@@ -511,7 +824,8 @@ export default function HDBPrediction({ isDark = false }) {
               value={form.floorArea} 
               onChange={v => setForm({...form, floorArea: v})} 
               min={35} 
-              max={200} 
+              max={200}
+              step={1}
               unit=" sqm"
               isDark={isDark}
             />
@@ -522,6 +836,7 @@ export default function HDBPrediction({ isDark = false }) {
               onChange={v => setForm({...form, leaseYear: v})} 
               min={1966} 
               max={2024}
+              step={1}
               isDark={isDark}
             />
             
@@ -532,6 +847,13 @@ export default function HDBPrediction({ isDark = false }) {
             >
               {isLoading ? "Predicting..." : "Predict Market Price"}
             </button>
+            
+            {/* Error Message */}
+            {error && (
+              <div className={`p-3 rounded-lg ${t.error} text-sm`}>
+                {error}
+              </div>
+            )}
           </div>
 
           {/* Right: Results */}
@@ -541,18 +863,19 @@ export default function HDBPrediction({ isDark = false }) {
                 <div className="text-center px-6">
                   <div className={`w-14 h-14 mx-auto mb-4 rounded-xl ${t.bgEmpty} flex items-center justify-center transition-colors duration-300`}>
                     <svg className={`w-7 h-7 ${t.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
                   <p className={`${t.textMuted} text-sm`}>
-                    Configure flat criteria and predict
+                    Search for an HDB address to get price predictions
                   </p>
                 </div>
               </div>
             ) : (
               <div className="space-y-5">
                 
-                {/* Main Price Card */}
+                {/* Main Price Card - UPDATED WITH TOGGLE */}
                 <div className={`${t.bgCard} border ${t.border} rounded-xl p-6 ${isDark ? '' : 'shadow-sm'} transition-colors duration-300`}>
                   <div className="flex items-start justify-between mb-1">
                     <span className={`text-xs uppercase tracking-widest ${t.textMuted}`}>
@@ -580,25 +903,95 @@ export default function HDBPrediction({ isDark = false }) {
                     </div>
                   </div>
                   
+                  {/* UPDATED: Toggle section with breakdown */}
                   <div className={`mt-4 pt-4 border-t ${t.border}`}>
-                    <p className={`text-xs ${t.textMuted}`}>
-                      Average price for <span className={t.textSecondary}>{submittedForm?.flatType}</span> flats 
-                      in <span className={t.textSecondary}>{submittedForm?.town}</span> with 
-                      ~<span className={t.textSecondary}>{selectedPrediction?.remainingLease} years</span> lease 
-                      remaining in <span className={t.textSecondary}>{selectedYear}</span>
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-xs ${t.textMuted}`}>
+                        Price for <span className={t.textSecondary}>{submittedForm?.flatType}</span> at 
+                        <span className={t.textSecondary}> {submittedForm?.block} {submittedForm?.street}</span> with 
+                        ~<span className={t.textSecondary}>{selectedPrediction?.remainingLease} years</span> lease 
+                        remaining in <span className={t.textSecondary}>{selectedYear}</span>
+                      </p>
+                      
+                      {/* Toggle Button */}
+                      {selectedPrediction?.basePrice && (
+                        <button
+                          onClick={() => setShowBreakdown(!showBreakdown)}
+                          className={`ml-4 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 flex-shrink-0 ${
+                            showBreakdown
+                              ? (isDark ? 'bg-white text-black' : 'bg-gray-900 text-white')
+                              : (isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
+                          }`}
+                        >
+                          {showBreakdown ? '▲ Hide' : '▼ Show'} Breakdown
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Price Breakdown Panel */}
+                    {showBreakdown && selectedPrediction?.basePrice && (
+                      <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-neutral-800/50' : 'bg-gray-50'} transition-all duration-300`}>
+                        <div className="space-y-3">
+                          {/* Base Price */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`}></div>
+                              <span className={`text-sm ${t.textSecondary}`}>Base Price (XGBoost)</span>
+                            </div>
+                            <span className={`font-mono text-sm ${t.text}`}>
+                              ${selectedPrediction.basePrice.toLocaleString()}
+                            </span>
+                          </div>
+                          
+                          {/* Trend Multiplier */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`}></div>
+                              <span className={`text-sm ${t.textSecondary}`}>Market Trend (Prophet)</span>
+                            </div>
+                            <span className={`font-mono text-sm ${t.text}`}>
+                              ×{selectedPrediction.trendMultiplier?.toFixed(4)}
+                            </span>
+                          </div>
+                          
+                          {/* Divider */}
+                          <div className={`border-t ${t.border}`}></div>
+                          
+                          {/* Final Price */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${isDark ? 'bg-white' : 'bg-gray-900'}`}></div>
+                              <span className={`text-sm font-medium ${t.text}`}>Final Price</span>
+                            </div>
+                            <span className={`font-mono text-sm font-medium ${t.text}`}>
+                              ${selectedPrediction.price.toLocaleString()}
+                            </span>
+                          </div>
+                          
+                          {/* Formula */}
+                          <div className={`mt-2 p-2 rounded ${isDark ? 'bg-neutral-900' : 'bg-white border'} text-center`}>
+                            <code className={`text-xs ${t.textMuted}`}>
+                              ${selectedPrediction.basePrice.toLocaleString()} × {selectedPrediction.trendMultiplier?.toFixed(4)} = ${selectedPrediction.price.toLocaleString()}
+                            </code>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Price Trajectory - Interactive: Click bars to select year */}
+                {/* Price Trajectory */}
                 {predictions && <PriceChart predictions={predictions} selectedYear={selectedYear} onSelectYear={setSelectedYear} isDark={isDark} />}
 
-                {/* Input Summary - Show the criteria that was used for prediction */}
+                {/* Input Summary */}
                 <div className={`${t.bgSection} border ${t.border} rounded-xl p-4 transition-colors duration-300`}>
                   <p className={`text-xs uppercase tracking-widest ${t.textMuted} mb-3`}>
-                    Used Prediction Criteria
+                    Prediction Details
                   </p>
                   <div className="flex flex-wrap gap-2">
+                    <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} font-mono`}>
+                      📍 {submittedForm?.block} {submittedForm?.street}
+                    </span>
                     <span className={`px-2 py-1 ${t.tagBg} rounded text-xs ${t.tagText} font-mono`}>
                       {submittedForm?.town}
                     </span>
@@ -620,9 +1013,9 @@ export default function HDBPrediction({ isDark = false }) {
                   </div>
                 </div>
                 
-                {/* Disclaimer */}
+                {/* UPDATED Disclaimer */}
                 <p className={`text-xs ${t.textMuted} text-center`}>
-                  Predictions based on historical trends. Actual prices may vary.
+                  Predictions powered by <strong>Hybrid Model</strong>: XGBoost (property valuation) × Prophet (market trend)
                 </p>
               </div>
             )}
@@ -633,7 +1026,7 @@ export default function HDBPrediction({ isDark = false }) {
       {/* Footer */}
       <footer className={`border-t ${t.border} mt-10 transition-colors duration-300`}>
         <div className={`max-w-5xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-3 text-xs ${t.textMuted}`}>
-          <span>Trained on 217K+ HDB transactions (2017–2025)</span>
+          <span>Trained on 254K+ HDB transactions (2015–2025)</span>
           <span>Data Minions • SUTD Production Ready ML</span>
         </div>
       </footer>

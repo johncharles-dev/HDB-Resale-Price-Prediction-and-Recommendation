@@ -1,0 +1,20 @@
+﻿# Environment
+HDB-Frontend/env/
+env/
+venv/
+.env
+
+# Archive
+archive/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+
+
+# OS
+.DS_Store

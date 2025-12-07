@@ -22,3 +22,25 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Checkpoints
+.ipynb_checkpoints/
+*-checkpoint.csv
+*-checkpoint.ipynb
+
+# Virtual documents
+.virtual_documents/
+
+# Environment
+HDB-Frontend/env/
+env/
+
+# OS
+.DS_Store
+
+# Large data (if not needed in repo)
+01_raw_data/
+02_datasets ready for cleaning/
+
+# Archive
+archive/

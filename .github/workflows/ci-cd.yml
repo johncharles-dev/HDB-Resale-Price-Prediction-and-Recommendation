@@ -13,6 +13,11 @@ on:
       - 'HDB-Backend/**'
       - 'HDB-Frontend/**'
 
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/johncharles-dev/hdb-resale-price-prediction-and-recommendation/hdb-backend
+  FRONTEND_IMAGE: ghcr.io/johncharles-dev/hdb-resale-price-prediction-and-recommendation/hdb-frontend
+
 jobs:
   # ============================================
   # BACKEND JOBS
@@ -51,6 +56,40 @@ jobs:
           pytest tests/ -v --tb=short || echo "No tests found or tests skipped"
         continue-on-error: true
 
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    needs: test-backend
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./HDB-Backend
+          file: ./HDB-Backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # ============================================
   # FRONTEND JOBS
   # ============================================
@@ -82,12 +121,46 @@ jobs:
       - name: Build test
         run: npm run build
 
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    needs: test-frontend
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./HDB-Frontend
+          file: ./HDB-Frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # ============================================
   # DEPLOY TO EC2
   # ============================================
   deploy:
     name: Deploy to EC2
-    needs: [test-backend, test-frontend]
+    needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -99,22 +172,35 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/HDB-Resale-Price-Prediction-and-Recommendation
-            git pull origin main
+            # Login to GitHub Container Registry
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # Backend
-            cd HDB-Backend
+            # Stop existing containers
             docker stop hdb-api || true
             docker rm hdb-api || true
-            docker build -t hdb-backend .
-            docker run -d -p 8000:8000 --name hdb-api --restart unless-stopped hdb-backend
-
-            # Frontend
-            cd ../HDB-Frontend
             docker stop hdb-frontend || true
             docker rm hdb-frontend || true
-            docker build -t hdb-frontend .
-            docker run -d -p 80:80 --name hdb-frontend --restart unless-stopped hdb-frontend
+
+            # Pull latest images
+            docker pull ghcr.io/johncharles-dev/hdb-resale-price-prediction-and-recommendation/hdb-backend:latest
+            docker pull ghcr.io/johncharles-dev/hdb-resale-price-prediction-and-recommendation/hdb-frontend:latest
+
+            # Run Backend
+            docker run -d \
+              --name hdb-api \
+              --restart unless-stopped \
+              -p 8000:8000 \
+              ghcr.io/johncharles-dev/hdb-resale-price-prediction-and-recommendation/hdb-backend:latest
+
+            # Run Frontend
+            docker run -d \
+              --name hdb-frontend \
+              --restart unless-stopped \
+              -p 80:80 \
+              ghcr.io/johncharles-dev/hdb-resale-price-prediction-and-recommendation/hdb-frontend:latest
+
+            # Cleanup old images
+            docker image prune -f
 
             # Health check
             sleep 20

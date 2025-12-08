@@ -1,0 +1,23 @@
+{
+  "features": [
+    "floor_area_sqm",
+    "lease_commence_year",
+    "floor_level",
+    "distance_to_nearest_primary_school_km",
+    "distance_to_nearest_high_value_school_km",
+    "distance_to_nearest_mrt_km",
+    "distance_to_nearest_hawker_km",
+    "distance_to_nearest_mall_km",
+    "distance_to_cbd_km",
+    "month_num",
+    "quarter",
+    "region_code",
+    "flat_type_int",
+    "flat_model_code",
+    "town_code",
+    "remaining_lease"
+  ],
+  "base_year": 2025,
+  "model_type": "hybrid_xgboost_prophet",
+  "description": "XGBoost for property valuation + Prophet for market trends"
+}

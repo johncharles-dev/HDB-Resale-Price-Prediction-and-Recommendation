@@ -78,17 +78,17 @@ const Icons = {
   ),
   train: (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 18v-2m8 2v-2M5 10h14M6 14h.01M18 14h.01M7 6h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2V8a2 2 0 012-2zm5-2v2" />
     </svg>
   ),
   school: (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
     </svg>
   ),
   cart: (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
     </svg>
   ),
   utensils: (
@@ -177,7 +177,10 @@ const PERSON_OPTIONS = ["You", "Spouse", "Partner", "Family Member"];
 
 const PREDICTION_YEARS = [2025, 2026, 2027, 2028];
 
-// ============== MOCK RECOMMENDATION ==============
+// ============== MOCK RECOMMENDATION (NO LONGER USED - KEPT FOR REFERENCE) ==============
+// This function has been replaced by the real API call in handleSearch
+// The /recommend endpoint returns data in the same format
+/*
 const generateRecommendations = (criteria) => {
   const towns = criteria.towns.length > 0 ? criteria.towns : ["BEDOK", "TAMPINES", "PASIR RIS"];
   
@@ -206,6 +209,7 @@ const generateRecommendations = (criteria) => {
     };
   });
 };
+*/
 
 // ============== COMPONENTS ==============
 
@@ -559,7 +563,6 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark 
   
   const percent = ((value - min) / (max - min)) * 100;
   
-  // Format value to avoid floating point display issues
   const formatVal = (v) => {
     const decimals = step < 1 ? String(step).split('.')[1]?.length || 1 : 0;
     return Number(v).toFixed(decimals);
@@ -567,12 +570,10 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark 
   
   const handleMove = (clientX) => {
     if (!trackRef.current) return;
-    
     const rect = trackRef.current.getBoundingClientRect();
     const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
     const rawValue = (pct / 100) * (max - min) + min;
     const snappedValue = Math.round(rawValue / step) * step;
-    // Fix floating point by rounding to step precision
     const decimals = step < 1 ? String(step).split('.')[1]?.length || 1 : 0;
     const fixedValue = Number(snappedValue.toFixed(decimals));
     onChange(Math.max(min, Math.min(max, fixedValue)));
@@ -581,12 +582,10 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark 
   useEffect(() => {
     const handleMouseMove = (e) => handleMove(e.clientX);
     const handleMouseUp = () => setIsDragging(false);
-    
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     }
-    
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
@@ -599,18 +598,13 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark 
     <div 
       className="space-y-2"
       onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => {
-        if (!isDragging) setIsHovering(false);
-      }}
+      onMouseLeave={() => { if (!isDragging) setIsHovering(false); }}
     >
       <label className={`block text-xs uppercase tracking-widest ${t.textLabel}`}>{label}</label>
       
-      {/* Value display that moves with handle */}
       <div className="relative h-6">
         <div 
-          className={`absolute -translate-x-1/2 transition-all duration-150 ease-out ${
-            showValue ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
+          className={`absolute -translate-x-1/2 transition-all duration-150 ease-out ${showValue ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{ left: `${percent}%` }}
         >
           <span className={`px-2 py-1 ${t.bgTooltip} ${t.text} text-xs font-mono rounded-md whitespace-nowrap`}>
@@ -620,59 +614,175 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark 
       </div>
       
       <div className="relative py-2">
-        {/* Invisible larger hit area for easier interaction */}
         <div 
           ref={trackRef}
           className="absolute inset-0 cursor-pointer"
           style={{ top: '-8px', bottom: '-8px', height: 'calc(100% + 16px)' }}
           onClick={(e) => handleMove(e.clientX)}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-            handleMove(e.clientX);
-          }}
+          onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); handleMove(e.clientX); }}
         />
-        
-        {/* Visible thin track */}
         <div className={`relative h-1 ${t.bgTrack} rounded-full pointer-events-none`}>
-          {/* Fill */}
-          <div 
-            className={`absolute h-full ${t.bgFill} rounded-full transition-all duration-150 ease-out`}
-            style={{ width: `${percent}%` }}
-          />
+          <div className={`absolute h-full ${t.bgFill} rounded-full transition-all duration-150 ease-out`} style={{ width: `${percent}%` }} />
         </div>
-        
-        {/* Handle */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-150 ease-out"
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-150 ease-out" style={{ left: `${percent}%` }}>
+          <div className="absolute -inset-3 cursor-grab" onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }} />
+          <div className={`w-3 h-3 ${t.bgHandle} rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${isDragging ? 'opacity-100 scale-110' : showValue ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`} />
+        </div>
+      </div>
+      
+      <div className={`flex justify-between text-xs ${t.textSecondary}`}>
+        <span>{formatVal(min)}{unit}</span>
+        <span>{formatVal(max)}{unit}</span>
+      </div>
+    </div>
+  );
+};
+
+// Optional Slider with "No Preference" toggle for amenity distances
+const OptionalSlider = ({ label, value, onChange, min, max, step = 0.1, unit = "", isDark = false, defaultValue = null }) => {
+  const [isHovering, setIsHovering] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const trackRef = useRef(null);
+  const t = getTheme(isDark);
+  
+  const isEnabled = value !== null;
+  const displayValue = isEnabled ? value : defaultValue || min;
+  const percent = ((displayValue - min) / (max - min)) * 100;
+  
+  const formatVal = (v) => {
+    const decimals = step < 1 ? String(step).split('.')[1]?.length || 1 : 0;
+    return Number(v).toFixed(decimals);
+  };
+  
+  const handleMove = (clientX) => {
+    if (!trackRef.current || !isEnabled) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const rawValue = (pct / 100) * (max - min) + min;
+    const snappedValue = Math.round(rawValue / step) * step;
+    const decimals = step < 1 ? String(step).split('.')[1]?.length || 1 : 0;
+    const fixedValue = Number(snappedValue.toFixed(decimals));
+    onChange(Math.max(min, Math.min(max, fixedValue)));
+  };
+  
+  const handleTouchMove = (e) => {
+    if (e.touches.length > 0) {
+      handleMove(e.touches[0].clientX);
+    }
+  };
+  
+  useEffect(() => {
+    const handleMouseMove = (e) => handleMove(e.clientX);
+    const handleMouseUp = () => setIsDragging(false);
+    const handleTouchEnd = () => setIsDragging(false);
+    
+    if (isDragging && isEnabled) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('touchend', handleTouchEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, isEnabled]);
+  
+  const handleToggle = () => {
+    if (isEnabled) {
+      onChange(null);
+    } else {
+      onChange(defaultValue || ((max - min) / 3 + min));
+    }
+  };
+  
+  const showValue = (isHovering || isDragging) && isEnabled;
+  
+  return (
+    <div 
+      className="space-y-2 mb-5"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => { if (!isDragging) setIsHovering(false); }}
+    >
+      {/* Label row with toggle */}
+      <div className="flex items-center justify-between">
+        <label className={`block text-xs uppercase tracking-widest font-medium ${t.textLabel}`}>{label}</label>
+        <button
+          onClick={handleToggle}
+          className={`flex items-center gap-2 text-xs font-medium transition-all duration-200 ${isEnabled ? (isDark ? 'text-neutral-300' : 'text-gray-700') : (isDark ? 'text-neutral-500' : 'text-gray-400')}`}
+        >
+          <span>{isEnabled ? 'Limit set' : 'Any distance'}</span>
+          <div className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${isEnabled ? (isDark ? 'bg-neutral-600' : 'bg-gray-600') : (isDark ? 'bg-neutral-700' : 'bg-gray-300')}`}>
+            <div 
+              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${isEnabled ? 'left-4' : 'left-0.5'}`} 
+            />
+          </div>
+        </button>
+      </div>
+      
+      {/* Value display tooltip */}
+      <div className="relative h-7">
+        <div 
+          className={`absolute -translate-x-1/2 transition-all duration-150 ${showValue ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{ left: `${percent}%` }}
         >
-          {/* Invisible larger hit area for handle */}
+          <span className={`px-2 py-1 ${isDark ? 'bg-neutral-800' : 'bg-gray-800'} text-white text-xs font-mono rounded shadow whitespace-nowrap`}>
+            {formatVal(displayValue)} {unit}
+          </span>
+        </div>
+      </div>
+      
+      {/* Slider track */}
+      <div className={`relative py-3 transition-opacity duration-200 ${isEnabled ? 'opacity-100' : 'opacity-40'}`}>
+        <div 
+          ref={trackRef}
+          className={`absolute inset-0 ${isEnabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+          style={{ top: '-12px', bottom: '-12px', height: 'calc(100% + 24px)' }}
+          onClick={(e) => isEnabled && handleMove(e.clientX)}
+          onMouseDown={(e) => { if (!isEnabled) return; e.preventDefault(); setIsDragging(true); handleMove(e.clientX); }}
+          onTouchStart={(e) => { if (!isEnabled) return; setIsDragging(true); handleTouchMove(e); }}
+        />
+        {/* Track background */}
+        <div className={`relative h-0.5 ${isDark ? 'bg-neutral-700' : 'bg-gray-300'} rounded-full pointer-events-none`}>
+          {/* Track fill */}
           <div 
-            className="absolute -inset-3 cursor-grab"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
+            className={`absolute h-full rounded-full pointer-events-none ${isDark ? 'bg-white' : 'bg-gray-800'}`} 
+            style={{ 
+              width: `${percent}%`,
+              transition: isDragging ? 'none' : 'width 0.1s ease-out'
+            }} 
           />
-          
-          {/* Handle circle - small and only visible on hover */}
-          <div
-            className={`w-3 h-3 ${t.bgHandle} rounded-full shadow-md pointer-events-none transition-all duration-200 ease-out ${
-              isDragging 
-                ? 'opacity-100 scale-110' 
-                : showValue
-                  ? 'opacity-100 scale-100'
-                  : 'opacity-0 scale-75'
-            }`}
+        </div>
+        {/* Handle */}
+        <div 
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none" 
+          style={{ 
+            left: `${percent}%`,
+            transition: isDragging ? 'none' : 'left 0.1s ease-out'
+          }}
+        >
+          <div 
+            className={`absolute -inset-4 ${isEnabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'} pointer-events-auto`} 
+            onMouseDown={(e) => { if (!isEnabled) return; e.preventDefault(); setIsDragging(true); }} 
+            onTouchStart={(e) => { if (!isEnabled) return; setIsDragging(true); }}
+          />
+          <div 
+            className={`relative w-3.5 h-3.5 rounded-full border-2 transition-transform duration-100 ${
+              isEnabled 
+                ? `${isDark ? 'bg-white border-white' : 'bg-white border-gray-800'} ${isDragging ? 'scale-125' : ''}` 
+                : (isDark ? 'bg-neutral-500 border-neutral-500' : 'bg-gray-400 border-gray-400')
+            }`} 
           />
         </div>
       </div>
       
       {/* Min/Max labels */}
       <div className={`flex justify-between text-xs ${t.textSecondary}`}>
-        <span>{formatVal(min)}{unit}</span>
-        <span>{formatVal(max)}{unit}</span>
+        <span>{formatVal(min)} {unit}</span>
+        <span className={`transition-opacity duration-200 ${isEnabled ? 'opacity-0' : 'opacity-100'}`}>(No limit)</span>
+        <span>{formatVal(max)} {unit}</span>
       </div>
     </div>
   );
@@ -970,8 +1080,10 @@ const SelectDropdown = ({ value, onChange, options, placeholder, isDark = false 
 };
 
 // Work Locations Section
-const WorkLocationsSection = ({ entries, onChange, isDark = false }) => {
+const WorkLocationsSection = ({ entries, onChange, isDark = false, workAreas = [] }) => {
   const t = getTheme(isDark);
+  const locationOptions = workAreas.length > 0 ? workAreas : WORK_LOCATIONS;
+  
   const addEntry = () => {
     const newId = Math.max(0, ...entries.map(e => e.id)) + 1;
     const personNum = entries.length + 1;
@@ -992,6 +1104,9 @@ const WorkLocationsSection = ({ entries, onChange, isDark = false }) => {
       <div className="flex items-center gap-2 mb-3">
         <span className={t.textSecondary}>{Icons.briefcase}</span>
         <span className={`font-medium ${t.text}`}>Work Locations</span>
+        {workAreas.length > 0 && (
+          <span className={`text-xs ${t.textSecondary}`}>({workAreas.length} areas)</span>
+        )}
       </div>
       
       {entries.map((entry) => (
@@ -1010,7 +1125,7 @@ const WorkLocationsSection = ({ entries, onChange, isDark = false }) => {
             <SelectDropdown
               value={entry.location}
               onChange={(val) => updateEntry(entry.id, 'location', val)}
-              options={WORK_LOCATIONS}
+              options={locationOptions}
               placeholder="Select..."
               isDark={isDark}
             />
@@ -1047,8 +1162,10 @@ const WorkLocationsSection = ({ entries, onChange, isDark = false }) => {
 };
 
 // School Locations Section
-const SchoolLocationsSection = ({ entries, onChange, isDark = false }) => {
+const SchoolLocationsSection = ({ entries, onChange, isDark = false, schools = [] }) => {
   const t = getTheme(isDark);
+  const schoolOptions = schools.length > 0 ? schools : SCHOOLS_SAMPLE;
+  
   const addEntry = () => {
     const newId = Math.max(0, ...entries.map(e => e.id)) + 1;
     const childNum = entries.length + 1;
@@ -1068,6 +1185,9 @@ const SchoolLocationsSection = ({ entries, onChange, isDark = false }) => {
       <div className="flex items-center gap-2 mb-3">
         <span className={t.textSecondary}>{Icons.academic}</span>
         <span className={`font-medium ${t.text}`}>School Locations</span>
+        {schools.length > 0 && (
+          <span className={`text-xs ${t.textSecondary}`}>({schools.length} schools)</span>
+        )}
       </div>
       
       {entries.map((entry) => (
@@ -1086,7 +1206,7 @@ const SchoolLocationsSection = ({ entries, onChange, isDark = false }) => {
             <SelectDropdown
               value={entry.school}
               onChange={(val) => updateEntry(entry.id, 'school', val)}
-              options={SCHOOLS_SAMPLE}
+              options={schoolOptions}
               placeholder="Select school..."
               isDark={isDark}
             />
@@ -1352,7 +1472,7 @@ const RecommendationCard = ({ rec, rank, isDark = false }) => {
         </div>
         <div>
           <p className={`text-xs ${t.textSecondary}`}>Lease Left</p>
-          <p className={`text-sm ${t.textSecondary}`}>{rec.remainingLease} yrs</p>
+          <p className={`text-sm ${t.textSecondary}`}>{Math.round(rec.remainingLease)} yrs</p>
         </div>
         <div>
           <p className={`text-xs ${t.textSecondary}`}>Score</p>
@@ -1384,11 +1504,11 @@ export default function HDBRecommendation({ isDark = false }) {
   const [storeyRanges, setStoreyRanges] = useState([]);
   const [leaseRange, setLeaseRange] = useState([30, 65]);
   
-  // Amenity distances (defaults at ~1/3 of range)
-  const [maxMrt, setMaxMrt] = useState(0.9);      // range 0.3-2.0, 1/3 ≈ 0.9
-  const [maxSchool, setMaxSchool] = useState(0.5); // range 0.3-1.0, 1/3 ≈ 0.5
-  const [maxMall, setMaxMall] = useState(1.2);     // range 0.3-3.0, 1/3 ≈ 1.2
-  const [maxHawker, setMaxHawker] = useState(0.9); // range 0.3-2.0, 1/3 ≈ 0.9
+  // Amenity distances (null = no preference/any distance)
+  const [maxMrt, setMaxMrt] = useState(null);      // range 0.3-2.0
+  const [maxSchool, setMaxSchool] = useState(null); // range 0.3-1.0
+  const [maxMall, setMaxMall] = useState(null);     // range 0.3-3.0
+  const [maxHawker, setMaxHawker] = useState(null); // range 0.3-2.0
   
   // Frequent destinations - structured data
   const [workLocations, setWorkLocations] = useState([]);
@@ -1396,34 +1516,141 @@ export default function HDBRecommendation({ isDark = false }) {
   const [parentsHomes, setParentsHomes] = useState([]);
   const [otherDestinations, setOtherDestinations] = useState([]);
   
+  // Fetched location data from API
+  const [fetchedSchools, setFetchedSchools] = useState([]);
+  const [fetchedWorkAreas, setFetchedWorkAreas] = useState([]);
+  const [fetchedPoiCategories, setFetchedPoiCategories] = useState([]);
+  const [fetchedPois, setFetchedPois] = useState({});
+  
   // Results
   const [recommendations, setRecommendations] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [submittedYear, setSubmittedYear] = useState(null);
+  
+  // Fetch location data on mount
+  useEffect(() => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    
+    // Fetch schools
+    fetch(`${API_URL}/locations/schools`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.schools) {
+          setFetchedSchools(data.schools.map(s => s.name));
+        }
+      })
+      .catch(err => console.log('Could not fetch schools:', err));
+    
+    // Fetch work areas
+    fetch(`${API_URL}/locations/work-areas`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.work_areas) {
+          setFetchedWorkAreas(data.work_areas.map(w => w.name));
+        }
+      })
+      .catch(err => console.log('Could not fetch work areas:', err));
+    
+    // Fetch POI categories
+    fetch(`${API_URL}/locations/poi-categories`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.categories) {
+          setFetchedPoiCategories(data.categories);
+          // Fetch POIs for each category
+          data.categories.forEach(cat => {
+            fetch(`${API_URL}/locations/pois/${cat.value}`)
+              .then(res => res.json())
+              .then(poiData => {
+                if (poiData.pois) {
+                  setFetchedPois(prev => ({
+                    ...prev,
+                    [cat.value]: poiData.pois.map(p => p.name)
+                  }));
+                }
+              })
+              .catch(err => console.log(`Could not fetch POIs for ${cat.value}:`, err));
+          });
+        }
+      })
+      .catch(err => console.log('Could not fetch POI categories:', err));
+  }, []);
 
   const handleSearch = async () => {
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 1200));
-    
-    const criteria = {
-      targetYear,
-      budget,
-      towns,
-      flatTypes,
-      flatModels,
-      floorArea,
-      storeyRanges,
-      leaseRange,
-      maxDistances: { mrt: maxMrt, school: maxSchool, mall: maxMall, hawker: maxHawker },
-      destinations: { workLocations, schoolLocations, parentsHomes, otherDestinations }
-    };
-    
-    const results = generateRecommendations(criteria);
-    setRecommendations(results);
-    setSubmittedYear(targetYear);
-    setIsLoading(false);
+    try {
+      // Build request payload for the API
+      const requestBody = {
+        targetYear: targetYear,
+        budget: budget,
+        towns: towns,
+        flatTypes: flatTypes,
+        flatModels: flatModels,
+        floorArea: floorArea,
+        storeyRanges: storeyRanges,
+        leaseRange: leaseRange,
+        maxDistances: {
+          mrt: maxMrt,
+          school: maxSchool,
+          mall: maxMall,
+          hawker: maxHawker
+        },
+        destinations: {
+          workLocations: workLocations.map(w => ({
+            person: w.person || 'You',
+            location: w.location || '',
+            frequency: w.frequency || 'Daily (5x per week)'
+          })),
+          schoolLocations: schoolLocations.map(s => ({
+            child: s.child || 'Child 1',
+            school: s.school || ''
+          })),
+          parentsHomes: parentsHomes.map(p => ({
+            parent: p.parent || 'Parent 1',
+            location: p.location || '',
+            frequency: p.frequency || 'Weekly (1x per week)'
+          })),
+          otherDestinations: otherDestinations.map(o => ({
+            name: o.name || '',
+            location: o.location || '',
+            category: o.category || 'Other',
+            frequency: o.frequency || 'Weekly (1x per week)'
+          }))
+        }
+      };
+      
+      console.log('Sending recommendation request:', requestBody);
+      
+      // Call the backend API
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to get recommendations');
+      }
+      
+      console.log(`Found ${data.total_candidates} candidates, showing top ${data.recommendations.length}`);
+      
+      // Set results - response format matches UI expectations
+      setRecommendations(data.recommendations);
+      setSubmittedYear(targetYear);
+      
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      alert(`Failed to get recommendations: ${error.message}`);
+      setRecommendations(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -1543,12 +1770,14 @@ export default function HDBRecommendation({ isDark = false }) {
                 entries={workLocations} 
                 onChange={setWorkLocations}
                 isDark={isDark}
+                workAreas={fetchedWorkAreas}
               />
               
               <SchoolLocationsSection 
                 entries={schoolLocations} 
                 onChange={setSchoolLocations}
                 isDark={isDark}
+                schools={fetchedSchools}
               />
               
               <ParentsHomesSection 
@@ -1566,7 +1795,11 @@ export default function HDBRecommendation({ isDark = false }) {
 
             {/* Section 4: Amenity Proximity */}
             <Section title="Amenity Proximity" icon={Icons.mapPin} defaultOpen={true} isDark={isDark}>
-              <Slider
+              <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'} mb-4`}>
+                Toggle to set maximum distance limits, or leave as "Any distance" for no constraint.
+              </p>
+              
+              <OptionalSlider
                 label="Max Distance to MRT"
                 value={maxMrt}
                 onChange={setMaxMrt}
@@ -1575,9 +1808,10 @@ export default function HDBRecommendation({ isDark = false }) {
                 step={0.1}
                 unit=" km"
                 isDark={isDark}
+                defaultValue={0.8}
               />
               
-              <Slider
+              <OptionalSlider
                 label="Max Distance to Primary School"
                 value={maxSchool}
                 onChange={setMaxSchool}
@@ -1586,9 +1820,10 @@ export default function HDBRecommendation({ isDark = false }) {
                 step={0.1}
                 unit=" km"
                 isDark={isDark}
+                defaultValue={0.5}
               />
               
-              <Slider
+              <OptionalSlider
                 label="Max Distance to Shopping Mall"
                 value={maxMall}
                 onChange={setMaxMall}
@@ -1597,9 +1832,10 @@ export default function HDBRecommendation({ isDark = false }) {
                 step={0.1}
                 unit=" km"
                 isDark={isDark}
+                defaultValue={1.0}
               />
               
-              <Slider
+              <OptionalSlider
                 label="Max Distance to Hawker Center"
                 value={maxHawker}
                 onChange={setMaxHawker}
@@ -1608,6 +1844,7 @@ export default function HDBRecommendation({ isDark = false }) {
                 step={0.1}
                 unit=" km"
                 isDark={isDark}
+                defaultValue={0.8}
               />
             </Section>
 

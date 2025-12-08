@@ -9,7 +9,7 @@ Run: uvicorn app.main:app --reload --port 8000
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import joblib
 import pandas as pd
 import numpy as np
@@ -18,6 +18,9 @@ from pathlib import Path
 from datetime import datetime
 import json
 import httpx
+
+# Import recommendation module
+from app.recommendation import generate_recommendations, parse_destinations
 
 # ============================================
 # APP SETUP
@@ -51,6 +54,7 @@ FEATURES_PATH = BASE_DIR / "app" / "models" / "hybrid_model_features.json"
 # Data files
 MAPPINGS_PATH = BASE_DIR / "app" / "data" / "mappings"
 AMENITIES_PATH = BASE_DIR / "app" / "data" / "amenities"
+DATA_PATH = BASE_DIR / "app" / "data"  # For HDB dataset
 
 # ============================================
 # GLOBAL RESOURCES
@@ -61,6 +65,8 @@ trend_multipliers = None
 model_features = None
 mappings = None
 amenity_data = None
+location_data = None  # Schools and POIs for dropdowns
+hdb_data = None  # Real HDB transaction dataset
 
 # Town to Region mapping (CCR=0, RCR=1, OCR=2)
 TOWN_TO_REGION = {
@@ -139,13 +145,54 @@ def load_amenity_data():
     }
 
 
+def load_location_data():
+    """Load schools and POIs for dropdown options"""
+    print(f"Loading location data from: {AMENITIES_PATH}")
+    
+    data = {
+        'schools': [],
+        'pois': {},
+        'poi_categories': []
+    }
+    
+    # Load primary schools
+    schools_path = AMENITIES_PATH / 'Primary_school_dataset.csv'
+    if schools_path.exists():
+        df = pd.read_csv(schools_path)
+        data['schools'] = df.to_dict('records')
+        print(f"  ✓ Loaded {len(data['schools'])} schools")
+    
+    # Load POIs
+    poi_path = AMENITIES_PATH / 'singapore_poi.csv'
+    if poi_path.exists():
+        df = pd.read_csv(poi_path)
+        # Clean up Windows line endings if any
+        df.columns = df.columns.str.strip()
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].str.strip()
+        
+        # Group by category
+        categories = df['category'].unique().tolist()
+        data['poi_categories'] = sorted([c for c in categories if c and c != 'category'])
+        
+        for cat in data['poi_categories']:
+            cat_df = df[df['category'] == cat][['name', 'lat', 'lon']].drop_duplicates(subset=['name'])
+            data['pois'][cat] = cat_df.to_dict('records')
+        
+        total_pois = sum(len(v) for v in data['pois'].values())
+        print(f"  ✓ Loaded {total_pois} POIs in {len(data['poi_categories'])} categories")
+    
+    return data
+
+
 # ============================================
 # STARTUP
 # ============================================
 
 @app.on_event("startup")
 async def load_resources():
-    global model, trend_multipliers, model_features, mappings, amenity_data
+    global model, trend_multipliers, model_features, mappings, amenity_data, location_data, hdb_data
     
     print("=" * 60)
     print("HDB Price Prediction API - HYBRID MODEL")
@@ -193,6 +240,50 @@ async def load_resources():
     except Exception as e:
         print(f"X Error loading amenities: {e}")
         raise e
+    
+    # Load location data for dropdowns
+    try:
+        location_data = load_location_data()
+        print(f"✓ Location data loaded")
+    except Exception as e:
+        print(f"|!| Location data not loaded: {e}")
+        location_data = {'schools': [], 'pois': {}, 'poi_categories': []}
+    
+    # Load HDB transaction data for recommendations
+    try:
+        hdb_dataset_path = DATA_PATH / "Complete_HDB_resale_dataset_2015_to_2025.csv"
+        if hdb_dataset_path.exists():
+            hdb_data = pd.read_csv(hdb_dataset_path)
+            # Parse remaining lease
+            if 'remaining_lease' in hdb_data.columns and hdb_data['remaining_lease'].dtype == 'object':
+                import re
+                def parse_lease(lease_str):
+                    if pd.isna(lease_str):
+                        return None
+                    if isinstance(lease_str, (int, float)):
+                        return float(lease_str)
+                    match = re.match(r'(\d+)\s*years?(?:\s*(\d+)\s*months?)?', str(lease_str))
+                    if match:
+                        years = int(match.group(1))
+                        months = int(match.group(2)) if match.group(2) else 0
+                        return years + months / 12
+                    return None
+                hdb_data['remaining_lease_years'] = hdb_data['remaining_lease'].apply(parse_lease)
+            else:
+                hdb_data['remaining_lease_years'] = hdb_data.get('remaining_lease', 99)
+            
+            hdb_data['latitude'] = pd.to_numeric(hdb_data['latitude'], errors='coerce')
+            hdb_data['longitude'] = pd.to_numeric(hdb_data['longitude'], errors='coerce')
+            hdb_data['town'] = hdb_data['town'].str.upper().str.strip()
+            hdb_data['flat_type'] = hdb_data['flat_type'].str.upper().str.strip()
+            print(f"✓ HDB dataset loaded: {len(hdb_data)} transactions")
+        else:
+            print(f"|!| HDB dataset not found at {hdb_dataset_path}")
+            print(f"    Place your Complete_HDB_resale_dataset.csv in {DATA_PATH}")
+            hdb_data = None
+    except Exception as e:
+        print(f"|!| HDB dataset not loaded: {e}")
+        hdb_data = None
     
     print("=" * 60)
     print("✓ All resources loaded - HYBRID MODEL READY")
@@ -270,12 +361,13 @@ class MultiYearPredictionResponse(BaseModel):
 @app.get("/")
 async def root():
     return {
-        "message": "HDB Price Prediction API - Hybrid Model",
-        "version": "3.0.0",
-        "model": "XGBoost + Prophet",
+        "message": "HDB Price Prediction & Recommendation API",
+        "version": "3.1.0",
+        "model": "XGBoost + Prophet Hybrid",
         "endpoints": {
             "/predict": "Single year prediction",
             "/predict/multi-year": "Multi-year trajectory (2025-2030)",
+            "/recommend": "Get personalized flat recommendations",
             "/options/towns": "Get available towns",
             "/options/flat_types": "Get available flat types",
             "/options/flat_models": "Get available flat models",
@@ -543,6 +635,333 @@ async def get_flat_models():
 async def get_trend_multipliers():
     """Get all trend multipliers (for debugging/display)"""
     return {"trend_multipliers": trend_multipliers}
+
+
+# ============================================
+# LOCATION DATA ENDPOINTS (for dropdowns)
+# ============================================
+
+@app.get("/locations/schools")
+async def get_schools():
+    """Get list of all primary schools with coordinates"""
+    if location_data and location_data.get('schools'):
+        schools = [
+            {
+                "name": s.get('school_name', s.get('name', '')),
+                "lat": s.get('latitude', s.get('lat')),
+                "lon": s.get('longitude', s.get('lon'))
+            }
+            for s in location_data['schools']
+        ]
+        return {"schools": sorted(schools, key=lambda x: x['name'])}
+    return {"schools": []}
+
+
+@app.get("/locations/poi-categories")
+async def get_poi_categories():
+    """Get list of available POI categories"""
+    if location_data and location_data.get('poi_categories'):
+        # Return user-friendly category names
+        category_labels = {
+            'supermarket': 'Supermarket',
+            'shopping_mall': 'Shopping Mall',
+            'gym': 'Gym / Fitness',
+            'hospital': 'Hospital',
+            'clinic': 'Clinic',
+            'pharmacy': 'Pharmacy',
+            'restaurant': 'Restaurant',
+            'cafe': 'Cafe',
+            'fast_food': 'Fast Food',
+            'bank': 'Bank',
+            'atm': 'ATM',
+            'convenience_store': 'Convenience Store',
+            'attraction': 'Attraction / Tourist Spot',
+            'university': 'University',
+            'college': 'College',
+            'yoga': 'Yoga Studio',
+            'co_working': 'Co-working Space',
+            'hotel': 'Hotel',
+            'bakery': 'Bakery',
+            'bookstore': 'Bookstore',
+            'clothing_store': 'Clothing Store',
+            'electronics_store': 'Electronics Store',
+            'jewelry_store': 'Jewelry Store',
+            'department_store': 'Department Store',
+            'dentist': 'Dentist',
+            'charging_station': 'EV Charging Station',
+            'viewpoint': 'Viewpoint / Scenic Spot',
+            'hostel': 'Hostel',
+            'school': 'School'
+        }
+        categories = [
+            {
+                "value": cat,
+                "label": category_labels.get(cat, cat.replace('_', ' ').title()),
+                "count": len(location_data['pois'].get(cat, []))
+            }
+            for cat in location_data['poi_categories']
+        ]
+        return {"categories": sorted(categories, key=lambda x: x['label'])}
+    return {"categories": []}
+
+
+@app.get("/locations/pois/{category}")
+async def get_pois_by_category(category: str):
+    """Get list of POIs for a specific category"""
+    if location_data and location_data.get('pois'):
+        pois = location_data['pois'].get(category, [])
+        return {
+            "category": category,
+            "pois": sorted(pois, key=lambda x: x.get('name', ''))
+        }
+    return {"category": category, "pois": []}
+
+
+@app.get("/locations/work-areas")
+async def get_work_areas():
+    """Get list of common work areas/business districts"""
+    work_areas = [
+        {"name": "CBD (Raffles Place)", "lat": 1.2840, "lon": 103.8515},
+        {"name": "Marina Bay", "lat": 1.2789, "lon": 103.8536},
+        {"name": "Shenton Way", "lat": 1.2760, "lon": 103.8460},
+        {"name": "Tanjong Pagar", "lat": 1.2764, "lon": 103.8466},
+        {"name": "Orchard Road", "lat": 1.3050, "lon": 103.8320},
+        {"name": "Jurong East", "lat": 1.3329, "lon": 103.7436},
+        {"name": "Jurong Island", "lat": 1.2660, "lon": 103.6990},
+        {"name": "Changi Business Park", "lat": 1.3345, "lon": 103.9650},
+        {"name": "Paya Lebar", "lat": 1.3180, "lon": 103.8930},
+        {"name": "Woodlands", "lat": 1.4360, "lon": 103.7865},
+        {"name": "Tampines", "lat": 1.3534, "lon": 103.9450},
+        {"name": "One North", "lat": 1.2990, "lon": 103.7873},
+        {"name": "Buona Vista", "lat": 1.3070, "lon": 103.7900},
+        {"name": "Novena", "lat": 1.3204, "lon": 103.8438},
+        {"name": "Tuas", "lat": 1.3150, "lon": 103.6360},
+        {"name": "Mapletree Business City", "lat": 1.3027, "lon": 103.7895},
+        {"name": "Science Park", "lat": 1.2960, "lon": 103.7870},
+        {"name": "Alexandra", "lat": 1.2880, "lon": 103.8020},
+        {"name": "Harbourfront", "lat": 1.2655, "lon": 103.8200},
+        {"name": "Suntec City", "lat": 1.2940, "lon": 103.8570},
+        {"name": "Bugis", "lat": 1.3005, "lon": 103.8550},
+        {"name": "City Hall", "lat": 1.2930, "lon": 103.8520},
+        {"name": "Dhoby Ghaut", "lat": 1.2990, "lon": 103.8460},
+        {"name": "Outram", "lat": 1.2800, "lon": 103.8390}
+    ]
+    return {"work_areas": sorted(work_areas, key=lambda x: x['name'])}
+
+
+# ============================================
+# RECOMMENDATION MODELS
+# ============================================
+
+class WorkLocation(BaseModel):
+    person: str = "You"
+    location: str = ""
+    frequency: str = "Daily (5x per week)"
+
+class SchoolLocation(BaseModel):
+    child: str = "Child 1"
+    school: str = ""
+
+class ParentHome(BaseModel):
+    parent: str = "Parent 1"
+    location: str = ""
+    frequency: str = "Weekly (1x per week)"
+
+class OtherDestination(BaseModel):
+    name: str = ""
+    location: str = ""
+    category: str = "Other"
+    frequency: str = "Weekly (1x per week)"
+
+class MaxDistances(BaseModel):
+    mrt: Optional[float] = None
+    school: Optional[float] = None
+    mall: Optional[float] = None
+    hawker: Optional[float] = None
+
+class Destinations(BaseModel):
+    workLocations: List[WorkLocation] = []
+    schoolLocations: List[SchoolLocation] = []
+    parentsHomes: List[ParentHome] = []
+    otherDestinations: List[OtherDestination] = []
+
+class RecommendationRequest(BaseModel):
+    """Request model matching the React frontend format."""
+    targetYear: int = Field(default=2026, ge=2025, le=2030)
+    budget: List[float] = Field(default=[400000, 700000])
+    towns: List[str] = []
+    flatTypes: List[str] = []
+    flatModels: List[str] = []
+    floorArea: List[float] = Field(default=[70, 120])
+    storeyRanges: List[str] = []
+    leaseRange: List[float] = Field(default=[30, 65])
+    maxDistances: MaxDistances = MaxDistances()
+    destinations: Destinations = Destinations()
+
+class RecommendationResponse(BaseModel):
+    success: bool
+    total_candidates: int = 0
+    recommendations: List[Dict[str, Any]] = []
+    message: Optional[str] = None
+    error: Optional[str] = None
+
+
+# ============================================
+# RECOMMENDATION HELPER
+# ============================================
+
+def predict_price_for_recommendation(
+    town: str,
+    flat_type: str,
+    flat_model: str,
+    floor_area_sqm: float,
+    floor_level: int,
+    lease_commence_year: int,
+    year: int,
+    lat: float,
+    lon: float,
+    distances: dict
+) -> float:
+    """
+    Predict price using hybrid model for recommendation scoring.
+    This wraps the existing prediction logic for use in recommendations.
+    """
+    # Get codes from mappings
+    town_df = mappings['town']
+    town_row = town_df[town_df['town'] == town.upper()]
+    if town_row.empty:
+        raise ValueError(f"Unknown town: {town}")
+    town_code = town_row['town_code'].values[0]
+    
+    flat_type_df = mappings['flat_type']
+    flat_type_row = flat_type_df[flat_type_df['flat_type'] == flat_type.upper()]
+    if flat_type_row.empty:
+        raise ValueError(f"Unknown flat type: {flat_type}")
+    flat_type_int = flat_type_row['flat_type_int'].values[0]
+    
+    flat_model_df = mappings['flat_model']
+    flat_model_row = flat_model_df[flat_model_df['flat_model_grouped'] == flat_model]
+    if flat_model_row.empty:
+        flat_model_row = flat_model_df[flat_model_df['flat_model_grouped'].str.upper() == flat_model.upper()]
+    if flat_model_row.empty:
+        flat_model_row = flat_model_df[flat_model_df['flat_model_grouped'] == 'OTHER']
+        if flat_model_row.empty:
+            flat_model_row = flat_model_df.iloc[[0]]
+    flat_model_code = flat_model_row['flat_model_code'].values[0]
+    
+    region_code = TOWN_TO_REGION.get(town.upper(), 2)
+    remaining_lease = 99 - (year - lease_commence_year)
+    quarter = 1  # Default to Q1
+    month = 1
+    
+    # Build model input
+    model_input = pd.DataFrame([{
+        'floor_area_sqm': floor_area_sqm,
+        'lease_commence_year': lease_commence_year,
+        'floor_level': floor_level,
+        'distance_to_nearest_primary_school_km': distances.get('distance_to_nearest_primary_school_km', 0.5),
+        'distance_to_nearest_high_value_school_km': distances.get('distance_to_nearest_high_value_school_km', 1.0),
+        'distance_to_nearest_mrt_km': distances.get('distance_to_nearest_mrt_km', 0.5),
+        'distance_to_nearest_hawker_km': distances.get('distance_to_nearest_hawker_km', 0.5),
+        'distance_to_nearest_mall_km': distances.get('distance_to_nearest_mall_km', 1.0),
+        'distance_to_cbd_km': distances.get('distance_to_cbd_km', 10.0),
+        'month_num': month,
+        'quarter': quarter,
+        'region_code': region_code,
+        'flat_type_int': flat_type_int,
+        'flat_model_code': flat_model_code,
+        'town_code': town_code,
+        'remaining_lease': remaining_lease
+    }])
+    
+    # Get base prediction
+    base_price = float(model.predict(model_input)[0])
+    
+    # Apply trend multiplier
+    trend = get_trend_multiplier(year)
+    final_price = base_price * trend
+    
+    return final_price
+
+
+# ============================================
+# RECOMMENDATION ENDPOINT
+# ============================================
+
+@app.post("/recommend", response_model=RecommendationResponse)
+async def get_recommendations(request: RecommendationRequest):
+    """
+    Get personalized HDB flat recommendations.
+    
+    Uses 5-score weighted ranking:
+    - Travel Convenience (35%): Distance to work/school/parents
+    - Value Efficiency (25%): Price per sqm vs similar flats
+    - Budget Comfort (20%): How well price fits budget
+    - Amenity Access (15%): Proximity to MRT, schools, malls
+    - Space Adequacy (5%): Floor area vs preference
+    """
+    try:
+        # Convert request to dict for recommendation engine
+        user_input = {
+            'targetYear': request.targetYear,
+            'budget': request.budget,
+            'towns': [t.upper() for t in request.towns],
+            'flatTypes': [ft.upper() for ft in request.flatTypes],
+            'flatModels': request.flatModels,
+            'floorArea': request.floorArea,
+            'storeyRanges': request.storeyRanges,
+            'leaseRange': request.leaseRange,
+            'maxDistances': {
+                'mrt': request.maxDistances.mrt,
+                'school': request.maxDistances.school,
+                'mall': request.maxDistances.mall,
+                'hawker': request.maxDistances.hawker
+            },
+            'workLocations': [w.dict() for w in request.destinations.workLocations],
+            'schoolLocations': [s.dict() for s in request.destinations.schoolLocations],
+            'parentsHomes': [p.dict() for p in request.destinations.parentsHomes],
+            'otherDestinations': [o.dict() for o in request.destinations.otherDestinations]
+        }
+        
+        print(f"\n{'='*60}")
+        print(f"RECOMMENDATION REQUEST")
+        print(f"{'='*60}")
+        print(f"Target Year: {request.targetYear}")
+        print(f"Budget: ${request.budget[0]:,.0f} - ${request.budget[1]:,.0f}")
+        print(f"Towns: {request.towns if request.towns else 'Any'}")
+        print(f"Flat Types: {request.flatTypes if request.flatTypes else 'Any'}")
+        print(f"Destinations: {len(user_input['workLocations'])} work, {len(user_input['parentsHomes'])} parents")
+        
+        # Generate recommendations
+        result = generate_recommendations(
+            user_input=user_input,
+            calculate_distances_fn=calculate_all_distances,
+            predict_price_fn=predict_price_for_recommendation,
+            mappings=mappings,
+            location_data=location_data,
+            hdb_data=hdb_data,
+            top_n=10
+        )
+        
+        print(f"✓ Found {result['total_candidates']} candidates")
+        print(f"✓ Returning top {len(result['recommendations'])} recommendations")
+        print(f"{'='*60}\n")
+        
+        return RecommendationResponse(
+            success=True,
+            total_candidates=result['total_candidates'],
+            recommendations=result['recommendations'],
+            message=result.get('message')
+        )
+        
+    except Exception as e:
+        print(f"X Recommendation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return RecommendationResponse(
+            success=False,
+            error=f"Recommendation failed: {str(e)}"
+        )
 
 
 # ============================================

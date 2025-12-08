@@ -466,6 +466,9 @@ async def predict(request: PredictionRequest):
             'remaining_lease': remaining_lease  # ← HYBRID: uses remaining_lease, NOT year
         }])
         
+        print("DEBUG model_input:", model_input.to_dict())
+        print("DEBUG model_input values:", model_input.values.tolist())
+
         # Step 6: Get base prediction from XGBoost
         base_price = float(model.predict(model_input)[0])
         

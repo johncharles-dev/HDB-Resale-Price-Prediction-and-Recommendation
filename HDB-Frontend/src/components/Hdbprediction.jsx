@@ -483,8 +483,9 @@ const Slider = ({ label, value, onChange, min, max, step = 1, unit = "", isDark 
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging]);
-  
+
   const showValue = isHovering || isDragging;
   
   return (

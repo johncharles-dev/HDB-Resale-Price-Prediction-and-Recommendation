@@ -100,79 +100,25 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
-
-            # Navigate to project directory
             cd ~/HDB-Resale-Price-Prediction-and-Recommendation
-
-            # Pull latest code
-            echo "Pulling latest code..."
             git pull origin main
 
-            # Stop existing containers
-            echo "Stopping existing containers..."
-            docker stop hdb-api hdb-frontend 2>/dev/null || true
-            docker rm hdb-api hdb-frontend 2>/dev/null || true
+            # Backend
+            cd HDB-Backend
+            docker stop hdb-api || true
+            docker rm hdb-api || true
+            docker build -t hdb-backend .
+            docker run -d -p 8000:8000 --name hdb-api --restart unless-stopped hdb-backend
 
-            # Build Backend image
-            echo "Building backend image..."
-            cd ~/HDB-Resale-Price-Prediction-and-Recommendation/HDB-Backend
-            docker build -t hdb-api:latest .
+            # Frontend
+            cd ../HDB-Frontend
+            docker stop hdb-frontend || true
+            docker rm hdb-frontend || true
+            docker build -t hdb-frontend .
+            docker run -d -p 80:80 --name hdb-frontend --restart unless-stopped hdb-frontend
 
-            # Build Frontend image
-            echo "Building frontend image..."
-            cd ~/HDB-Resale-Price-Prediction-and-Recommendation/HDB-Frontend
-            docker build -t hdb-frontend:latest .
+            # Health check
+            sleep 20
+            curl -f http://localhost:8000/health || exit 1
 
-            # Start Backend container (port 8000)
-            echo "Starting backend container..."
-            docker run -d \
-              --name hdb-api \
-              --restart unless-stopped \
-              -p 8000:8000 \
-              -v ~/HDB-Resale-Price-Prediction-and-Recommendation/HDB-Backend/app/data:/app/app/data:ro \
-              -v ~/HDB-Resale-Price-Prediction-and-Recommendation/HDB-Backend/app/models:/app/app/models:ro \
-              hdb-api:latest
-
-            # Start Frontend container (port 80)
-            echo "Starting frontend container..."
-            docker run -d \
-              --name hdb-frontend \
-              --restart unless-stopped \
-              -p 80:80 \
-              hdb-frontend:latest
-
-            # Cleanup old images
-            echo "Cleaning up old images..."
-            docker image prune -f
-
-            # Health checks with retries
-            echo "Waiting for services to start..."
-            sleep 10
-
-            echo "Checking backend health..."
-            for i in 1 2 3 4 5; do
-              if curl -sf http://localhost:8000/health > /dev/null; then
-                echo "Backend is healthy!"
-                break
-              fi
-              echo "Attempt $i: Backend not ready, waiting..."
-              sleep 5
-            done
-
-            echo "Checking frontend health..."
-            for i in 1 2 3 4 5; do
-              if curl -sf http://localhost:80/health > /dev/null; then
-                echo "Frontend is healthy!"
-                break
-              fi
-              echo "Attempt $i: Frontend not ready, waiting..."
-              sleep 5
-            done
-
-            echo ""
-            echo "========================================="
             echo "Deployment successful!"
-            echo "Frontend: http://${{ secrets.EC2_HOST }}"
-            echo "Backend API: http://${{ secrets.EC2_HOST }}:8000"
-            echo "========================================="

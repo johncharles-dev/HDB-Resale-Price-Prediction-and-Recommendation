@@ -13,11 +13,6 @@ on:
       - 'HDB-Backend/**'
       - 'HDB-Frontend/**'
 
-env:
-  REGISTRY: ghcr.io
-  BACKEND_IMAGE: ${{ github.repository }}/hdb-backend
-  FRONTEND_IMAGE: ${{ github.repository }}/hdb-frontend
-
 jobs:
   # ============================================
   # BACKEND JOBS
@@ -56,50 +51,6 @@ jobs:
           pytest tests/ -v --tb=short || echo "No tests found or tests skipped"
         continue-on-error: true
 
-  build-backend:
-    name: Build Backend Image
-    runs-on: ubuntu-latest
-    needs: test-backend
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (Backend)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
-      - name: Build and push Backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./HDB-Backend
-          file: ./HDB-Backend/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   # ============================================
   # FRONTEND JOBS
   # ============================================
@@ -131,57 +82,13 @@ jobs:
       - name: Build test
         run: npm run build
 
-  build-frontend:
-    name: Build Frontend Image
-    runs-on: ubuntu-latest
-    needs: test-frontend
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (Frontend)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
-      - name: Build and push Frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./HDB-Frontend
-          file: ./HDB-Frontend/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   # ============================================
-  # DEPLOY BOTH TO EC2
+  # DEPLOY TO EC2
   # ============================================
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]
+    needs: [test-backend, test-frontend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
 
@@ -193,48 +100,79 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /opt/hdb-app
+            set -e
+
+            # Navigate to project directory
+            cd ~/HDB-Resale-Price-Prediction-and-Recommendation
 
             # Pull latest code
+            echo "Pulling latest code..."
             git pull origin main
 
-            # Login to container registry
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # Pull latest images
-            docker pull ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
-            docker pull ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
-
             # Stop existing containers
-            docker stop hdb-backend hdb-frontend || true
-            docker rm hdb-backend hdb-frontend || true
+            echo "Stopping existing containers..."
+            docker stop hdb-api hdb-frontend 2>/dev/null || true
+            docker rm hdb-api hdb-frontend 2>/dev/null || true
+
+            # Build Backend image
+            echo "Building backend image..."
+            cd ~/HDB-Resale-Price-Prediction-and-Recommendation/HDB-Backend
+            docker build -t hdb-api:latest .
+
+            # Build Frontend image
+            echo "Building frontend image..."
+            cd ~/HDB-Resale-Price-Prediction-and-Recommendation/HDB-Frontend
+            docker build -t hdb-frontend:latest .
 
             # Start Backend container (port 8000)
+            echo "Starting backend container..."
             docker run -d \
-              --name hdb-backend \
+              --name hdb-api \
               --restart unless-stopped \
               -p 8000:8000 \
-              -v /opt/hdb-app/HDB-Backend/app/data:/app/app/data:ro \
-              -v /opt/hdb-app/HDB-Backend/app/models:/app/app/models:ro \
-              ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
+              -v ~/HDB-Resale-Price-Prediction-and-Recommendation/HDB-Backend/app/data:/app/app/data:ro \
+              -v ~/HDB-Resale-Price-Prediction-and-Recommendation/HDB-Backend/app/models:/app/app/models:ro \
+              hdb-api:latest
 
             # Start Frontend container (port 80)
+            echo "Starting frontend container..."
             docker run -d \
               --name hdb-frontend \
               --restart unless-stopped \
               -p 80:80 \
-              ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+              hdb-frontend:latest
 
             # Cleanup old images
+            echo "Cleaning up old images..."
             docker image prune -f
 
-            # Health checks
-            sleep 15
-            echo "Checking backend health..."
-            curl -f http://localhost:8000/health || exit 1
-            echo "Checking frontend health..."
-            curl -f http://localhost:80/health || exit 1
+            # Health checks with retries
+            echo "Waiting for services to start..."
+            sleep 10
 
+            echo "Checking backend health..."
+            for i in 1 2 3 4 5; do
+              if curl -sf http://localhost:8000/health > /dev/null; then
+                echo "Backend is healthy!"
+                break
+              fi
+              echo "Attempt $i: Backend not ready, waiting..."
+              sleep 5
+            done
+
+            echo "Checking frontend health..."
+            for i in 1 2 3 4 5; do
+              if curl -sf http://localhost:80/health > /dev/null; then
+                echo "Frontend is healthy!"
+                break
+              fi
+              echo "Attempt $i: Frontend not ready, waiting..."
+              sleep 5
+            done
+
+            echo ""
+            echo "========================================="
             echo "Deployment successful!"
             echo "Frontend: http://${{ secrets.EC2_HOST }}"
             echo "Backend API: http://${{ secrets.EC2_HOST }}:8000"
+            echo "========================================="

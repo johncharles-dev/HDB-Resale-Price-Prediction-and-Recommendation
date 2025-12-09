@@ -8,4 +8,4 @@ With HDB flats making up over 80% of Singapore’s housing stock, empowering cit
 This project leverages machine learning to make housing decisions more informed, data-driven, and equitable.
 
 The full application is deployed on AWS EC2 and accessible here:
-👉 [Insert your EC2 link]
+ http://13.239.16.20/

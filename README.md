@@ -105,7 +105,31 @@ The project uses GitHub Actions for continuous integration and deployment. The p
 5. **Deploy to EC2**
    - Triggered only on `main` branch
    - SSH into EC2 instance
-   - Pulls latest images from container registry
+   - Pulls latest images from GitHub Container Registry
    - Stops and removes existing containers
-   - Deploys new containers with health checks
-   - Cleans up old images
+   - Deploys new containers with `--restart unless-stopped`
+   - Runs health check on `/health` endpoint
+
+## Monitoring Considerations
+
+- **Latency**: API response time ~200-500ms for predictions
+- **Model Drift**: Monthly retraining recommended as HDB market prices change
+- **Logging**: Docker logs capture all API requests and errors
+- **Health Check**: `/health` endpoint monitors model and data loading status
+- **Auto-Recovery**: `--restart unless-stopped` flag ensures container restarts on failure
+
+## Reproducing Results
+
+```bash
+# Clone repo
+git clone https://github.com/johncharles-dev/HDB-Resale-Price-Prediction-and-Recommendation.git
+
+# Run model training notebooks
+cd Hybrid_Model_Building
+jupyter notebook
+
+# Run backend locally
+cd ../HDB-Backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```

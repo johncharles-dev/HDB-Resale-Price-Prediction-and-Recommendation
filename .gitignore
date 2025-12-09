@@ -4,8 +4,7 @@ env/
 venv/
 .env
 
-# Archive
-archive/
+
 
 # Python
 __pycache__/
@@ -18,4 +17,7 @@ node_modules/
 
 # OS
 .DS_Store
+
+
+
 

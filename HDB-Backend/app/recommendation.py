@@ -409,12 +409,16 @@ def generate_candidates(
     calculate_distances_fn: Callable,
     predict_price_fn: Callable,
     mappings: Dict,
-    hdb_data: pd.DataFrame = None
+    hdb_data: pd.DataFrame = None,
+    timeout_seconds: float = 30.0  # Max processing time
 ) -> List[Dict]:
     """
     Filter real HDB transactions based on user criteria.
     This is the HARD FILTERING stage from the spec.
     """
+    import time
+    start_time = time.time()
+    
     # Load data if not provided
     if hdb_data is None:
         hdb_data = load_hdb_data()
@@ -496,11 +500,34 @@ def generate_candidates(
     
     candidates = []
     
-    # No sampling - process all filtered candidates for accuracy
-    # Hard filtering already reduces to manageable size (usually 1-3K)
-    print(f"Processing {len(df)} candidates (no sampling)...")
+    # Smart sampling: Ensure town coverage while limiting total candidates
+    MAX_CANDIDATES_TO_PROCESS = 2000  # Limit for performance
+    
+    if len(df) > MAX_CANDIDATES_TO_PROCESS:
+        # Stratified sampling by town to ensure coverage
+        towns_in_df = df['town'].unique()
+        samples_per_town = max(50, MAX_CANDIDATES_TO_PROCESS // len(towns_in_df))
+        
+        sampled_dfs = []
+        for town in towns_in_df:
+            town_df = df[df['town'] == town]
+            n_samples = min(len(town_df), samples_per_town)
+            sampled_dfs.append(town_df.sample(n=n_samples, random_state=42))
+        
+        df = pd.concat(sampled_dfs, ignore_index=True)
+        print(f"Stratified sampling: {len(df)} candidates ({samples_per_town} per town)")
+    else:
+        print(f"Processing {len(df)} candidates...")
+    
+    # Early exit threshold - stop after finding enough good candidates
+    MAX_GOOD_CANDIDATES = 500
     
     for idx, row in df.iterrows():
+        # Check timeout
+        if time.time() - start_time > timeout_seconds:
+            print(f"Timeout reached ({timeout_seconds}s), returning {len(candidates)} candidates")
+            break
+        
         lat, lon = row['latitude'], row['longitude']
         
         # Calculate distances to amenities (returns long keys)
@@ -571,8 +598,14 @@ def generate_candidates(
             'predicted_price': round(predicted_price, 0),
             'distances': distances
         })
+        
+        # Early exit if we have enough good candidates
+        if len(candidates) >= MAX_GOOD_CANDIDATES:
+            print(f"Early exit: Found {MAX_GOOD_CANDIDATES} candidates")
+            break
     
-    print(f"After amenity filters: {len(candidates)} candidates")
+    elapsed = time.time() - start_time
+    print(f"After amenity filters: {len(candidates)} candidates (processed in {elapsed:.2f}s)")
     return candidates
 
 

@@ -3,7 +3,8 @@ HDB Price Prediction API - Hybrid Model Version
 ================================================
 FastAPI backend with XGBoost + Prophet hybrid model for future predictions.
 
-Run: uvicorn app.main:app --reload --port 8000
+Run (single worker): uvicorn app.main:app --reload --port 8000
+Run (production):    uvicorn app.main:app --workers 4 --port 8000
 """
 
 from fastapi import FastAPI, HTTPException
@@ -18,9 +19,20 @@ from pathlib import Path
 from datetime import datetime
 import json
 import httpx
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+import hashlib
 
 # Import recommendation module
 from app.recommendation import generate_recommendations, parse_destinations
+
+# Thread pool for CPU-bound tasks (allows concurrent processing)
+# Adjust based on expected concurrent users and CPU cores
+import os
+CPU_CORES = os.cpu_count() or 4
+THREAD_WORKERS = min(32, CPU_CORES * 4)  # Up to 32 workers
+executor = ThreadPoolExecutor(max_workers=THREAD_WORKERS)
 
 # ============================================
 # APP SETUP
@@ -287,6 +299,9 @@ async def load_resources():
     
     print("=" * 60)
     print("✓ All resources loaded - HYBRID MODEL READY")
+    print(f"✓ CPU cores detected: {CPU_CORES}")
+    print(f"✓ Thread pool: {THREAD_WORKERS} workers for concurrent requests")
+    print(f"✓ Cache size: {_cache_max_size} entries")
     print("=" * 60)
 
 
@@ -466,9 +481,6 @@ async def predict(request: PredictionRequest):
             'remaining_lease': remaining_lease  # ← HYBRID: uses remaining_lease, NOT year
         }])
         
-        print("DEBUG model_input:", model_input.to_dict())
-        print("DEBUG model_input values:", model_input.values.tolist())
-
         # Step 6: Get base prediction from XGBoost
         base_price = float(model.predict(model_input)[0])
         
@@ -891,6 +903,36 @@ def predict_price_for_recommendation(
 # RECOMMENDATION ENDPOINT
 # ============================================
 
+# Simple cache for recommendations (LRU with max entries)
+_recommendation_cache = {}
+_cache_max_size = 500  # Increased for more concurrent users
+
+def _get_cache_key(user_input: dict) -> str:
+    """Generate a cache key from user input."""
+    # Create a hashable representation
+    key_parts = [
+        str(user_input.get('targetYear')),
+        str(user_input.get('budget')),
+        str(sorted(user_input.get('towns', []))),
+        str(sorted(user_input.get('flatTypes', []))),
+        str(user_input.get('floorArea')),
+        str(user_input.get('leaseRange')),
+    ]
+    key_str = '|'.join(key_parts)
+    return hashlib.md5(key_str.encode()).hexdigest()
+
+def _run_recommendations(user_input: dict) -> dict:
+    """CPU-bound recommendation task - runs in thread pool."""
+    return generate_recommendations(
+        user_input=user_input,
+        calculate_distances_fn=calculate_all_distances,
+        predict_price_fn=predict_price_for_recommendation,
+        mappings=mappings,
+        location_data=location_data,
+        hdb_data=hdb_data,
+        top_n=10
+    )
+
 @app.post("/recommend", response_model=RecommendationResponse)
 async def get_recommendations(request: RecommendationRequest):
     """
@@ -902,6 +944,8 @@ async def get_recommendations(request: RecommendationRequest):
     - Budget Comfort (20%): How well price fits budget
     - Amenity Access (15%): Proximity to MRT, schools, malls
     - Space Adequacy (5%): Floor area vs preference
+    
+    Supports concurrent requests via thread pool executor.
     """
     try:
         # Convert request to dict for recommendation engine
@@ -935,16 +979,22 @@ async def get_recommendations(request: RecommendationRequest):
         print(f"Flat Types: {request.flatTypes if request.flatTypes else 'Any'}")
         print(f"Destinations: {len(user_input['workLocations'])} work, {len(user_input['parentsHomes'])} parents")
         
-        # Generate recommendations
-        result = generate_recommendations(
-            user_input=user_input,
-            calculate_distances_fn=calculate_all_distances,
-            predict_price_fn=predict_price_for_recommendation,
-            mappings=mappings,
-            location_data=location_data,
-            hdb_data=hdb_data,
-            top_n=10
-        )
+        # Check cache first
+        cache_key = _get_cache_key(user_input)
+        if cache_key in _recommendation_cache:
+            print(f"✓ Cache hit! Returning cached results")
+            result = _recommendation_cache[cache_key]
+        else:
+            # Run CPU-bound task in thread pool (non-blocking for other requests)
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(executor, _run_recommendations, user_input)
+            
+            # Cache the result (with size limit)
+            if len(_recommendation_cache) >= _cache_max_size:
+                # Remove oldest entry
+                oldest_key = next(iter(_recommendation_cache))
+                del _recommendation_cache[oldest_key]
+            _recommendation_cache[cache_key] = result
         
         print(f"✓ Found {result['total_candidates']} candidates")
         print(f"✓ Returning top {len(result['recommendations'])} recommendations")
@@ -967,10 +1017,40 @@ async def get_recommendations(request: RecommendationRequest):
         )
 
 
+@app.post("/recommend/clear-cache")
+async def clear_recommendation_cache():
+    """Clear the recommendation cache."""
+    global _recommendation_cache
+    count = len(_recommendation_cache)
+    _recommendation_cache = {}
+    return {"success": True, "message": f"Cleared {count} cached entries"}
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for load balancers."""
+    return {
+        "status": "healthy",
+        "cpu_cores": CPU_CORES,
+        "thread_workers": THREAD_WORKERS,
+        "cache_size": len(_recommendation_cache),
+        "cache_max": _cache_max_size
+    }
+
+
 # ============================================
 # RUN SERVER
 # ============================================
 
 if __name__ == "__main__":
     import uvicorn
+    # Development (single worker):
+    #   uvicorn app.main:app --reload --port 8000
+    #
+    # Production (multiple workers for 10+ users):
+    #   uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    #
+    # High load (20+ users) with Gunicorn:
+    #   gunicorn app.main:app -w 8 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+    #
     uvicorn.run(app, host="0.0.0.0", port=8000)

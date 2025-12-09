@@ -65,7 +65,7 @@ docker run -p 80:80 hdb-frontend
 
 | Purpose    | Hardware                              |
 |------------|---------------------------------------|
-| Training   | Local machine / SUTD AI Cluster       |
+| Training   | Local machine                         |
 | Deployment | AWS EC2 t3.small (2 vCPU, 2GB RAM)    |
 
 ## Random Seeds

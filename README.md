@@ -8,12 +8,6 @@ This project aims to democratize property valuation for the Social Good by provi
 
 With HDB flats making up over 80% of Singapore's housing stock, empowering citizens to understand fair market values and discover homes that match their lifestyle needs is a critical economic enabler. This project leverages machine learning to make housing decisions more informed, data-driven, and equitable.
 
-## Team Members
-
-| Name | Role |
-|------|------|
-| TBD  | TBD  |
-
 ## Live Demo
 
 - **Frontend**: http://13.239.16.20

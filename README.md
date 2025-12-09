@@ -133,3 +133,196 @@ cd ../HDB-Backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
+
+## System Architecture
+
+### High-Level Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AWS EC2 (t3.small)                             │
+│                            2 vCPU, 2GB RAM                                  │
+├─────────────────────────────────┬───────────────────────────────────────────┤
+│                                 │                                           │
+│  ┌───────────────────────────┐  │  ┌─────────────────────────────────────┐  │
+│  │     HDB-Frontend          │  │  │         HDB-Backend                 │  │
+│  │     (Port 80)             │  │  │         (Port 8000)                 │  │
+│  │                           │  │  │                                     │  │
+│  │  React 19 + Vite 7        │  │  │  FastAPI + Uvicorn                  │  │
+│  │  Tailwind CSS             │  │  │                                     │  │
+│  │  nginx                    │  │  │  ┌─────────────────────────────┐    │  │
+│  │                           │  │  │  │   Hybrid ML Model           │    │  │
+│  │  ┌───────────────────┐    │  │  │  │   (XGBoost + Prophet)       │    │  │
+│  │  │ Hdbprediction.jsx │────┼──┼──┼─▶│                             │    │  │
+│  │  └───────────────────┘    │  │  │  └──────────────┬──────────────┘    │  │
+│  │                           │  │  │                 │                   │  │
+│  │  ┌───────────────────┐    │  │  │  ┌──────────────▼──────────────┐    │  │
+│  │  │Hdbrecommendation  │────┼──┼──┼─▶│   Recommendation Engine     │    │  │
+│  │  │.jsx               │    │  │  │  │   (uses same ML model)      │    │  │
+│  │  └───────────────────┘    │  │  │  └─────────────────────────────┘    │  │
+│  │                           │  │  │                                     │  │
+│  └───────────────────────────┘  │  └─────────────────────────────────────┘  │
+│                                 │                                           │
+└─────────────────────────────────┴───────────────────────────────────────────┘
+```
+
+### Technology Stack
+
+| Layer | Technology | Version |
+|-------|------------|---------|
+| **Frontend** | React | 19.2.0 |
+| | Vite | 7.2.4 |
+| | Tailwind CSS | 4.1.17 |
+| | nginx | alpine |
+| **Backend** | FastAPI | 0.109.0 |
+| | Uvicorn | 0.27.0 |
+| | Python | 3.11 |
+| **ML Model** | XGBoost | 3.1.2 |
+| | scikit-learn | 1.4.0 |
+| **Deployment** | Docker | Latest |
+| | GitHub Actions | CI/CD |
+| | AWS EC2 | t3.small |
+
+### Data Flow
+
+```
+User (Browser)
+    │
+    ├── Address Search ──────────► OneMap API (Singapore Gov)
+    │                                    │
+    │◄───────── lat/lon coords ──────────┘
+    │
+    ├─────────────────────────────────────────────────────────────┐
+    │  PREDICTION FLOW                 RECOMMENDATION FLOW        │
+    │                                                             │
+    ├── POST /predict ────────┐       POST /recommend ────────────┤
+    │                         │              │                    │
+    │                         ▼              ▼                    │
+    │                   ┌───────────────────────────────────┐     │
+    │                   │         FastAPI Backend           │     │
+    │                   │                                   │     │
+    │                   │  ┌─────────────────────────────┐  │     │
+    │                   │  │   SHARED PREDICTION MODEL   │  │     │
+    │                   │  │                             │  │     │
+    │                   │  │   XGBoost (base price)      │  │     │
+    │                   │  │          ×                  │  │     │
+    │                   │  │   Prophet (trend)           │  │     │
+    │                   │  │          =                  │  │     │
+    │                   │  │   Final Predicted Price     │  │     │
+    │                   │  │                             │  │     │
+    │                   │  └─────────────────────────────┘  │     │
+    │                   └───────────────────────────────────┘     │
+    │                         │              │                    │
+    │◄────────────────────────┴──────────────┘                    │
+    │                                                             │
+    ▼                                                             │
+Display in React UI                                               │
+```
+
+### ML Model Architecture (Hybrid XGBoost + Prophet)
+
+```
+User Input
+    │
+    ▼
+┌────────────────────────────────────────────────────┐
+│              Feature Engineering                    │
+│  16 Features:                                      │
+│  - floor_area_sqm, lease_commence_year, floor_level│
+│  - distance_to_mrt, school, hawker, mall, cbd      │
+│  - town_code, flat_type_int, flat_model_code       │
+│  - region_code, remaining_lease, month, quarter    │
+└────────────────────────────────────────────────────┘
+    │
+    ▼
+┌────────────────────┐     ┌────────────────────────┐
+│   XGBoost Model    │     │   Prophet Trend        │
+│   (Base Price)     │  ×  │   (Year Multiplier)    │
+│                    │     │                        │
+│   1.68MB model     │     │   2025: 1.000          │
+│                    │     │   2026: 1.063          │
+│                    │     │   2027: 1.127          │
+│                    │     │   2028: 1.192          │
+│                    │     │   2029: 1.252          │
+│                    │     │   2030: 1.312          │
+└────────────────────┘     └────────────────────────┘
+    │                           │
+    └───────────┬───────────────┘
+                ▼
+        Final Predicted Price
+```
+
+### Recommendation Engine
+
+The recommendation system uses the **same hybrid prediction model** to score each candidate flat:
+
+```
+User Preferences (budget, towns, destinations)
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 1: HARD FILTERING (from 254K HDB transactions)            │
+│  Filter by: budget, towns, flat types, floor area, lease        │
+└─────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 2: PRICE PREDICTION (for each candidate)                  │
+│  Calls predict_price_for_recommendation()                       │
+│  Uses same XGBoost + Prophet model                              │
+└─────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 3: MULTI-CRITERIA SCORING                                 │
+│                                                                 │
+│  Travel Score    35%  - Distance to work/school/parents         │
+│  Value Score     25%  - Price per sqm vs other candidates       │
+│  Budget Score    20%  - How close to mid-budget                 │
+│  Amenity Score   15%  - MRT, school, mall, hawker proximity     │
+│  Space Score      5%  - Floor area adequacy                     │
+│  ───────────────────────────────────────────────────────────    │
+│  Final Score    100%                                            │
+└─────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 4: RANK & RETURN TOP 10                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Health check & resource status |
+| `/predict` | POST | Single-year price prediction |
+| `/predict/multi-year` | POST | Multi-year trajectory (2025-2030) |
+| `/recommend` | POST | Flat recommendations (uses same model) |
+| `/options/towns` | GET | List of 26 towns |
+| `/options/flat_types` | GET | Flat types (2-5 ROOM, EXECUTIVE) |
+| `/locations/schools` | GET | Primary schools dataset |
+
+### Data Storage (In-Memory CSV)
+
+```
+HDB-Backend/app/
+├── models/
+│   ├── xgb_hybrid_base.joblib (1.68MB) ─── XGBoost model
+│   ├── trend_multipliers.json ─────────── Prophet multipliers
+│   └── hybrid_model_features.json ─────── 16 feature names
+│
+└── data/
+    ├── Complete_HDB_resale_dataset_2015_to_2025.csv (31.6MB, 254K rows)
+    ├── mappings/
+    │   ├── town_code_map.csv (26 towns)
+    │   ├── flat_type_int_map.csv
+    │   ├── flat_model_code_map.csv
+    │   └── region_code_map.csv
+    └── amenities/
+        ├── Primary_school_dataset.csv
+        ├── MRT_datasets.csv
+        ├── Hawker_Centers_datasets.csv
+        ├── Malls_datasets.csv
+        └── singapore_poi.csv
+```

@@ -95,6 +95,20 @@ TOWN_TO_REGION = {
 # HELPER FUNCTIONS
 # ============================================
 
+import math
+
+def clean_nan_values(obj):
+    """Recursively replace NaN and Inf values with None for JSON serialization"""
+    if isinstance(obj, dict):
+        return {k: clean_nan_values(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_nan_values(item) for item in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    return obj
+
 def get_nearest_distance(lat, lon, amenity_coords):
     """Calculate distance to nearest amenity using BallTree + Haversine"""
     if len(amenity_coords) == 0:
@@ -725,9 +739,10 @@ async def get_pois_by_category(category: str):
     """Get list of POIs for a specific category"""
     if location_data and location_data.get('pois'):
         pois = location_data['pois'].get(category, [])
+        cleaned_pois = clean_nan_values(pois)
         return {
             "category": category,
-            "pois": sorted(pois, key=lambda x: x.get('name', ''))
+            "pois": sorted(cleaned_pois, key=lambda x: str(x.get('name', '') or ''))
         }
     return {"category": category, "pois": []}
 

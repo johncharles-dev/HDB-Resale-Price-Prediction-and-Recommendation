@@ -172,7 +172,7 @@ def load_location_data():
     if schools_path.exists():
         df = pd.read_csv(schools_path)
         data['schools'] = df.to_dict('records')
-        print(f"  ✓ Loaded {len(data['schools'])} schools")
+        print(f"  [OK] Loaded {len(data['schools'])} schools")
     
     # Load POIs
     poi_path = AMENITIES_PATH / 'singapore_poi.csv'
@@ -193,7 +193,7 @@ def load_location_data():
             data['pois'][cat] = cat_df.to_dict('records')
         
         total_pois = sum(len(v) for v in data['pois'].values())
-        print(f"  ✓ Loaded {total_pois} POIs in {len(data['poi_categories'])} categories")
+        print(f"  [OK] Loaded {total_pois} POIs in {len(data['poi_categories'])} categories")
     
     return data
 
@@ -213,7 +213,7 @@ async def load_resources():
     # Load XGBoost model
     try:
         model = joblib.load(MODEL_PATH)
-        print(f"✓ XGBoost model loaded: {MODEL_PATH}")
+        print(f"[OK] XGBoost model loaded: {MODEL_PATH}")
     except Exception as e:
         print(f"X Error loading model: {e}")
         raise e
@@ -222,7 +222,7 @@ async def load_resources():
     try:
         with open(TREND_PATH) as f:
             trend_multipliers = json.load(f)
-        print(f"✓ Trend multipliers loaded: {len(trend_multipliers)} years")
+        print(f"[OK] Trend multipliers loaded: {len(trend_multipliers)} years")
         print(f"  Years: {list(trend_multipliers.keys())}")
     except Exception as e:
         print(f"X Error loading trend multipliers: {e}")
@@ -233,14 +233,14 @@ async def load_resources():
         if FEATURES_PATH.exists():
             with open(FEATURES_PATH) as f:
                 model_features = json.load(f)
-            print(f"✓ Feature config loaded")
+            print(f"[OK] Feature config loaded")
     except Exception as e:
         print(f"|!| Feature config not loaded: {e}")
     
     # Load mappings
     try:
         mappings = load_mappings()
-        print(f"✓ Mappings loaded: {len(mappings['town'])} towns")
+        print(f"[OK] Mappings loaded: {len(mappings['town'])} towns")
     except Exception as e:
         print(f"X Error loading mappings: {e}")
         raise e
@@ -248,7 +248,7 @@ async def load_resources():
     # Load amenity data
     try:
         amenity_data = load_amenity_data()
-        print(f"✓ Amenities loaded")
+        print(f"[OK] Amenities loaded")
     except Exception as e:
         print(f"X Error loading amenities: {e}")
         raise e
@@ -256,7 +256,7 @@ async def load_resources():
     # Load location data for dropdowns
     try:
         location_data = load_location_data()
-        print(f"✓ Location data loaded")
+        print(f"[OK] Location data loaded")
     except Exception as e:
         print(f"|!| Location data not loaded: {e}")
         location_data = {'schools': [], 'pois': {}, 'poi_categories': []}
@@ -288,7 +288,7 @@ async def load_resources():
             hdb_data['longitude'] = pd.to_numeric(hdb_data['longitude'], errors='coerce')
             hdb_data['town'] = hdb_data['town'].str.upper().str.strip()
             hdb_data['flat_type'] = hdb_data['flat_type'].str.upper().str.strip()
-            print(f"✓ HDB dataset loaded: {len(hdb_data)} transactions")
+            print(f"[OK] HDB dataset loaded: {len(hdb_data)} transactions")
         else:
             print(f"|!| HDB dataset not found at {hdb_dataset_path}")
             print(f"    Place your Complete_HDB_resale_dataset.csv in {DATA_PATH}")
@@ -298,10 +298,10 @@ async def load_resources():
         hdb_data = None
     
     print("=" * 60)
-    print("✓ All resources loaded - HYBRID MODEL READY")
-    print(f"✓ CPU cores detected: {CPU_CORES}")
-    print(f"✓ Thread pool: {THREAD_WORKERS} workers for concurrent requests")
-    print(f"✓ Cache size: {_cache_max_size} entries")
+    print("[OK] All resources loaded - HYBRID MODEL READY")
+    print(f"[OK] CPU cores detected: {CPU_CORES}")
+    print(f"[OK] Thread pool: {THREAD_WORKERS} workers for concurrent requests")
+    print(f"[OK] Cache size: {_cache_max_size} entries")
     print("=" * 60)
 
 
@@ -982,7 +982,7 @@ async def get_recommendations(request: RecommendationRequest):
         # Check cache first
         cache_key = _get_cache_key(user_input)
         if cache_key in _recommendation_cache:
-            print(f"✓ Cache hit! Returning cached results")
+            print(f"[OK] Cache hit! Returning cached results")
             result = _recommendation_cache[cache_key]
         else:
             # Run CPU-bound task in thread pool (non-blocking for other requests)
@@ -996,8 +996,8 @@ async def get_recommendations(request: RecommendationRequest):
                 del _recommendation_cache[oldest_key]
             _recommendation_cache[cache_key] = result
         
-        print(f"✓ Found {result['total_candidates']} candidates")
-        print(f"✓ Returning top {len(result['recommendations'])} recommendations")
+        print(f"[OK] Found {result['total_candidates']} candidates")
+        print(f"[OK] Returning top {len(result['recommendations'])} recommendations")
         print(f"{'='*60}\n")
         
         return RecommendationResponse(
